@@ -81,7 +81,7 @@
     #elif defined(CONFIG_IDF_TARGET_ESP32)
       #define LED_PIN GPIO_NUM_12
     #elif defined(ESP8266)
-        #define LED_PIN D2
+        #define LED_PIN D3
     #else
       #define LED_PIN 1
     #endif
