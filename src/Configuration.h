@@ -25,7 +25,7 @@
   #define WEB_LOG_MAX_SIZE 8192  // Cap log buffer to 8KB to prevent heap exhaustion
 #endif
 
-#ifdef CONFIG_IDF_TARGET_ESP32C3
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
   #define SERIAL_MONITOR_BAUD 460800
   //#define DISABLE_LOGGING // Xiao's setup with USB requires serial to be initialized on the IDE else it blocks
 #else
@@ -40,6 +40,9 @@
 #if defined(CONFIG_IDF_TARGET_ESP32C3)
   #define INTERNAL_LED_PIN GPIO_NUM_8
   #define DEVICE_NAME "ESP32C3LED"
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+  #define INTERNAL_LED_PIN LED_BUILTIN
+  #define DEVICE_NAME "ESP32S3LED"
 #elif defined(SEEED_XIAO_M0)
   #define INTERNAL_LED_PIN     13
 #elif defined(CONFIG_IDF_TARGET_ESP32)
@@ -71,14 +74,14 @@
 
 #ifdef LED
     #define LED_CHANGE_MODE_SEC   0
-    #if defined(CONFIG_IDF_TARGET_ESP32C3)
+    #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
       #define LED_PIN GPIO_NUM_2
     #elif defined(SEEED_XIAO_M0)
       #define LED_PIN 10
     #elif defined(CONFIG_IDF_TARGET_ESP32)
       #define LED_PIN GPIO_NUM_12
     #elif defined(ESP8266)
-        #define LED_PIN D3
+        #define LED_PIN D2
     #else
       #define LED_PIN 1
     #endif
@@ -99,7 +102,7 @@
   #define BUTTON_2_PIN     GPIO_NUM_1
 #endif
 
-#if defined(CONFIG_IDF_TARGET_ESP32C3)
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
   #ifdef OLED // ESD32C3 has a built-in OLED ie ESP32C4 Dev board
     #define OLED_SCREEN_WIDTH 72 // OLED display width, in pixels
     #define OLED_SCREEN_HEIGHT 40 // OLED display height, in pixel

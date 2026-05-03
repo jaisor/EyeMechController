@@ -30,8 +30,8 @@ CDevice::CDevice() {
   _state = DeviceState::INITIALIZING;
   tMillisUp = millis();
 
-  #if defined(CONFIG_IDF_TARGET_ESP32C3) && defined(OLED)
-    // ESP32C3 uses GPIO 5=SDA, GPIO 6=SCL - see https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/
+    #if (defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)) && defined(OLED)
+    // ESP32C3 and ESP32S3 variants in this project use GPIO 5=SDA and GPIO 6=SCL for the OLED bus.
     Wire.begin(GPIO_NUM_5, GPIO_NUM_6);
     Wire.setClock(400000); // 400kHz I2C
     delay(100);
@@ -103,7 +103,7 @@ CDevice::~CDevice() {
 
 void CDevice::loop() {
   #ifdef OLED
-  #ifdef CONFIG_IDF_TARGET_ESP32C3
+  #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
 
   // Check if temporary message has expired
   if (showingTempMessage && millis() >= tempMessageEndTime) {
@@ -205,7 +205,7 @@ void CDevice::loop() {
 
 #ifdef OLED
 void CDevice::updateContentBounds() {
-  #ifdef CONFIG_IDF_TARGET_ESP32C3
+  #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
   if (!virtualCanvas) return;
   
   // Scan virtual canvas to find rightmost occupied pixel
@@ -238,7 +238,7 @@ void CDevice::updateContentBounds() {
 }
 
 void CDevice::displayTemporaryMessage(const char* message, unsigned long durationMs) {
-  #ifdef CONFIG_IDF_TARGET_ESP32C3
+  #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
   if (!virtualCanvas) return;
   
   // Clear and draw message
