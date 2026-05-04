@@ -80,7 +80,7 @@ const char htmlWifi[] PROGMEM = R"=====(
         <fieldset>
           <label>
             Access point name (SSID)
-            <input type='text' id='ssid' name='ssid'>
+            <input type='text' id='ssid' name='ssid' value='%s'>
           </label>
           <label>WPA2 password
             <input type='password' id='pass' name='password' minlength='8' autocomplete='off' required>
@@ -88,18 +88,7 @@ const char htmlWifi[] PROGMEM = R"=====(
           <label>
             WiFi Power
             <select id='wifiPower' name='wifiPower'>
-              <option value='78'>WIFI_POWER_19_5dBm (7.8dBm)</option>
-              <option value='76'>WIFI_POWER_19dBm (7.6dBm)</option>
-              <option value='74'>WIFI_POWER_18_5dBm (7.4dBm)</option>
-              <option value='68'>WIFI_POWER_17dBm (6.8dBm)</option>
-              <option value='60'>WIFI_POWER_15dBm (6.0dBm)</option>
-              <option value='52'>WIFI_POWER_13dBm (5.2dBm)</option>
-              <option value='44'>WIFI_POWER_11dBm (4.4dBm)</option>
-              <option value='34'>WIFI_POWER_8_5dBm (3.4dBm)</option>
-              <option value='28'>WIFI_POWER_7dBm (2.8dBm)</option>
-              <option value='20'>WIFI_POWER_5dBm (2.0dBm)</option>
-              <option value='8'>WIFI_POWER_2dBm (0.8dBm)</option>
-              <option value='-4'>WIFI_POWER_MINUS_1dBm (-0.4dBm)</option>
+              %s
             </select>
             <sub><small>Set WiFi TX power (see datasheet for actual dBm values)</small></sub>
           </label>

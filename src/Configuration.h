@@ -7,7 +7,7 @@
 
 #define WIFI        // 2.4Ghz wifi access point
 #define LED         // Individually addressible LED strip
-//#define OLED        // OLED display
+#define OLED        // OLED display
 //#define BUTTONS     // Buttons
 
 //#define KEYPAD      // Buttons
@@ -90,7 +90,7 @@
         #define LED_STRIP_SIZE 267
         #define OUTTER_RING_SIZE 141
     #else
-        #define LED_STRIP_SIZE 90  
+        #define LED_STRIP_SIZE 128
         #define OUTTER_RING_SIZE 240
     #endif
     #define LED_BRIGHTNESS 1  // 0-1, 1-max brightness, make sure your LEDs are powered accordingly

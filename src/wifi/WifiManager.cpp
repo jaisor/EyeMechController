@@ -206,7 +206,7 @@ void CWifiManager::listen() {
   server->on("/log", HTTP_GET, [](AsyncWebServerRequest *request){ 
     Log.traceln("handleLog");
     intLEDOn();
-    AsyncResponseStream *response = request->beginResponseStream("text/plain; charset=UTF-8");
+    AsyncResponseStream *response = request->beginResponseStream("text/plain; charset=UTF-8", 16384);
     response->println(logStream.str().c_str());
     logStream.str(""); // Clear after reading to free memory
     request->send(response);
@@ -228,7 +228,7 @@ void CWifiManager::listen() {
       tMillis = millis();
       rebootNeeded = true;
     } else {
-      AsyncResponseStream *response = request->beginResponseStream("text/plain; charset=UTF-8");
+      AsyncResponseStream *response = request->beginResponseStream("text/plain; charset=UTF-8", 64);
       response->print("ERROR: Invalid configuration data");
       response->setCode(400);
       request->send(response);
@@ -244,7 +244,7 @@ void CWifiManager::listen() {
     if (success) {
       handleRestAPI_LED(request);
     } else {
-      AsyncResponseStream *response = request->beginResponseStream("text/plain; charset=UTF-8");
+      AsyncResponseStream *response = request->beginResponseStream("text/plain; charset=UTF-8", 64);
       response->print("ERROR");
       response->setCode(500);
       request->send(response);
@@ -260,9 +260,9 @@ void CWifiManager::listen() {
   #ifdef OLED
   if (device) {
     if (isApMode()) {
-      //device->displayApInfo(softAP_SSID, WIFI_FALLBACK_PASS, WiFi.softAPIP().toString().c_str());
+      device->setWifiAPInfo(softAP_SSID, WIFI_FALLBACK_PASS, WiFi.softAPIP().toString().c_str());
     } else {
-      //device->displayWifiInfo(SSID, WiFi.localIP().toString().c_str());
+      device->setWifiConnectedInfo(WiFi.localIP().toString().c_str());
     }
   }
   #endif
@@ -496,7 +496,7 @@ void CWifiManager::handleRoot(AsyncWebServerRequest *request) {
     request->redirect("/");
   
   } else {
-    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8");
+    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 4096);
     printHTMLTop(response);
     printHTMLMain(response);
     printHTMLBottom(response);
@@ -516,7 +516,7 @@ void CWifiManager::handleWifi(AsyncWebServerRequest *request) {
     String wifiPowerStr = request->arg("wifiPower");
     int wifiPower = wifiPowerStr.length() > 0 ? wifiPowerStr.toInt() : 78;
 
-    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8");
+    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 2048);
 
     printHTMLTop(response);
     response->printf("<p>Connecting to '%s' ... see you on the other side!</p>", ssid.c_str());
@@ -538,9 +538,37 @@ void CWifiManager::handleWifi(AsyncWebServerRequest *request) {
     tMillis = millis();
     rebootNeeded = true;
   } else {
-    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8");
+    // Generate WiFi power options with current selection marked
+    char wifiPowerOptions[1024];
+    snprintf_P(wifiPowerOptions, sizeof(wifiPowerOptions), PSTR(
+      "<option %s value='78'>WIFI_POWER_19_5dBm (7.8dBm)</option>"
+      "<option %s value='76'>WIFI_POWER_19dBm (7.6dBm)</option>"
+      "<option %s value='74'>WIFI_POWER_18_5dBm (7.4dBm)</option>"
+      "<option %s value='68'>WIFI_POWER_17dBm (6.8dBm)</option>"
+      "<option %s value='60'>WIFI_POWER_15dBm (6.0dBm)</option>"
+      "<option %s value='52'>WIFI_POWER_13dBm (5.2dBm)</option>"
+      "<option %s value='44'>WIFI_POWER_11dBm (4.4dBm)</option>"
+      "<option %s value='34'>WIFI_POWER_8_5dBm (3.4dBm)</option>"
+      "<option %s value='28'>WIFI_POWER_7dBm (2.8dBm)</option>"
+      "<option %s value='20'>WIFI_POWER_5dBm (2.0dBm)</option>"
+      "<option %s value='8'>WIFI_POWER_2dBm (0.8dBm)</option>"
+      "<option %s value='-4'>WIFI_POWER_MINUS_1dBm (-0.4dBm)</option>"),
+      configuration.wifiPower == 78  ? "selected" : "",
+      configuration.wifiPower == 76  ? "selected" : "",
+      configuration.wifiPower == 74  ? "selected" : "",
+      configuration.wifiPower == 68  ? "selected" : "",
+      configuration.wifiPower == 60  ? "selected" : "",
+      configuration.wifiPower == 52  ? "selected" : "",
+      configuration.wifiPower == 44  ? "selected" : "",
+      configuration.wifiPower == 34  ? "selected" : "",
+      configuration.wifiPower == 28  ? "selected" : "",
+      configuration.wifiPower == 20  ? "selected" : "",
+      configuration.wifiPower == 8   ? "selected" : "",
+      configuration.wifiPower == -4  ? "selected" : ""
+    );
+    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 6144);
     printHTMLTop(response);
-    response->printf_P(htmlWifi);
+    response->printf_P(htmlWifi, configuration.wifiSsid, wifiPowerOptions);
     printHTMLBottom(response);
     request->send(response);
   }
@@ -592,7 +620,7 @@ void CWifiManager::handleDevice(AsyncWebServerRequest *request) {
       tzOptions += "</option>";
     }
 
-    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8");
+    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 6144);
     printHTMLTop(response);
     response->printf_P(htmlDevice, configuration.ledEnabled ? "checked" : "", configuration.name, tzOptions.c_str());
     printHTMLBottom(response);
@@ -605,7 +633,7 @@ void CWifiManager::handleFactoryReset(AsyncWebServerRequest *request) {
   Log.traceln("handleFactoryReset");
   intLEDOn();
   
-  AsyncResponseStream *response = request->beginResponseStream("text/plain; charset=UTF-8");
+  AsyncResponseStream *response = request->beginResponseStream("text/plain; charset=UTF-8", 64);
   response->setCode(200);
   response->print("OK");
 
@@ -621,7 +649,7 @@ void CWifiManager::handleReboot(AsyncWebServerRequest *request) {
   Log.traceln("handleReboot");
   intLEDOn();
   
-  AsyncResponseStream *response = request->beginResponseStream("text/plain; charset=UTF-8");
+  AsyncResponseStream *response = request->beginResponseStream("text/plain; charset=UTF-8", 64);
   response->setCode(200);
   response->print("OK");
 
@@ -642,7 +670,7 @@ void CWifiManager::handleRestAPI_LED(AsyncWebServerRequest *request) {
   serializeJson(configJson, jsonStr);
   Log.verboseln("API payload: '%s'", jsonStr.c_str());
 
-  AsyncResponseStream *response = request->beginResponseStream("application/json; charset=UTF-8");
+  AsyncResponseStream *response = request->beginResponseStream("application/json; charset=UTF-8", 2048);
   response->print(jsonStr);
   response->setCode(200);
   request->send(response);
@@ -674,7 +702,7 @@ void CWifiManager::handleRestAPI_Device(AsyncWebServerRequest *request) {
   serializeJson(deviceJson, jsonStr);
   Log.verboseln("deviceSettings: '%s'", jsonStr.c_str());
 
-  AsyncResponseStream *response = request->beginResponseStream("application/json; charset=UTF-8");
+  AsyncResponseStream *response = request->beginResponseStream("application/json; charset=UTF-8", 2048);
   response->print(jsonStr);
   response->setCode(200);
   request->send(response);
@@ -725,7 +753,7 @@ void CWifiManager::handleRestAPI_Config(AsyncWebServerRequest *request) {
   serializeJson(configJson, jsonStr);
   Log.verboseln("Config: '%s'", jsonStr.c_str());
 
-  AsyncResponseStream *response = request->beginResponseStream("application/json; charset=UTF-8");
+  AsyncResponseStream *response = request->beginResponseStream("application/json; charset=UTF-8", 2048);
   response->print(jsonStr);
   response->setCode(200);
   request->send(response);
