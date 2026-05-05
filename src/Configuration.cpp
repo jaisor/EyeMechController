@@ -96,7 +96,11 @@ void EEPROM_loadConfig() {
       strcpy(configuration.ntpServer, NTP_SERVER);
       configuration.gmtOffset_sec = NTP_GMT_OFFSET_SEC;
       configuration.daylightOffset_sec = NTP_DAYLIGHT_OFFSET_SEC;
-      configuration.wifiPower = 78;
+      #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
+        configuration.wifiPower = 34; // ESP32-C3 default: WIFI_POWER_8_5dBm (8.5dBm)
+      #else
+        configuration.wifiPower = 82;
+      #endif
     #endif
     configuration.ledEnabled = false;
   }
@@ -253,7 +257,7 @@ float CONFIG_getLedBrightness(bool force) {
     tsLedBrightnessUpdate = millis();
     struct tm timeinfo;
     if (configuration.psStartHour || configuration.psEndHour) {
-      bool timeUpdated = getLocalTime(&timeinfo, 100); // Short timeout to avoid blocking when NTP is unavailable
+      bool timeUpdated = getLocalTime(&timeinfo, 0); // 0ms timeout - non-blocking, use cached system time only
       if (timeUpdated && isInsideInterval(timeinfo.tm_hour, configuration.psStartHour, configuration.psEndHour)) {
           currentLedBrightness = configuration.ledBrightness * configuration.psLedBrightness;
           if (currentLedBrightness != configuration.ledBrightness) {

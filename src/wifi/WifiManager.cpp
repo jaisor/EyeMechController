@@ -5,7 +5,6 @@
 #include <Arduino.h>
 #include <WiFiClient.h>
 #include <time.h>
-#include <ezTime.h>
 #include <ElegantOTA.h>
 #include <StreamUtils.h>
 #include <AsyncJson.h>
@@ -166,7 +165,8 @@ void CWifiManager::connect() {
       case -4: txPower = 1; break; // -1dBm
       default: txPower = 20.5; // 19.5dBm
     }
-    WiFi.setOutputPower(txPower); 
+    WiFi.setOutputPower(txPower);
+    WiFi.setSleepMode(WIFI_NONE_SLEEP); // Disable modem sleep to prevent beacon-interval stalls in main loop
 #endif
     wifiRetries = 0;
 
