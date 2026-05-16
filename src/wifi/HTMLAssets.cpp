@@ -55,6 +55,7 @@ const char htmlTop[] PROGMEM = R"=====(
             <ul dir="rtl">
               <li><a href="wifi">WiFi 🛜</a></li>
               <li><a href="device">Device 📟</a></li>
+              <li><a href="servo">Servos 🦾</a></li>
             </ul>
           </details>
       </li></ul>
@@ -196,6 +197,44 @@ const char htmlDevice[] PROGMEM = R"=====(
         </fieldset>
         <button type='submit' value='Submit'>Submit...</button>
       </form>
+)=====";
+
+const char htmlServo[] PROGMEM = R"=====(
+      <h3>Servo Controls</h3>
+      <fieldset>
+        <label>
+          Servo 0 &nbsp;<output id='sv0o'>%u</output>
+          <input type='range' min='0' max='100' value='%u' oninput='sv0o.value=this.value;setSv(0,this.value)'>
+        </label>
+        <label>
+          Servo 1 &nbsp;<output id='sv1o'>%u</output>
+          <input type='range' min='0' max='100' value='%u' oninput='sv1o.value=this.value;setSv(1,this.value)'>
+        </label>
+        <label>
+          Servo 2 &nbsp;<output id='sv2o'>%u</output>
+          <input type='range' min='0' max='100' value='%u' oninput='sv2o.value=this.value;setSv(2,this.value)'>
+        </label>
+        <label>
+          Servo 3 &nbsp;<output id='sv3o'>%u</output>
+          <input type='range' min='0' max='100' value='%u' oninput='sv3o.value=this.value;setSv(3,this.value)'>
+        </label>
+        <label>
+          Servo 4 &nbsp;<output id='sv4o'>%u</output>
+          <input type='range' min='0' max='100' value='%u' oninput='sv4o.value=this.value;setSv(4,this.value)'>
+        </label>
+        <label>
+          Servo 5 &nbsp;<output id='sv5o'>%u</output>
+          <input type='range' min='0' max='100' value='%u' oninput='sv5o.value=this.value;setSv(5,this.value)'>
+        </label>
+      </fieldset>
+      <script>
+        function setSv(ch, val) {
+          var body = new URLSearchParams();
+          body.append('ch', ch);
+          body.append('val', val);
+          fetch('/servo', { method: 'POST', body: body });
+        }
+      </script>
 )=====";
 
 const char cssPico[] PROGMEM = R"=====(

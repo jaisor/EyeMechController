@@ -13,6 +13,7 @@
 #include "wifi/WifiManager.h"
 #include "wifi/HTMLAssets.h"
 #include "Device.h"
+#include "ServoManager.h"
 
 #define MAX_CONNECT_TIMEOUT_MS 15000 // 10 seconds to connect before creating its own AP
 #define POST_UPDATE_INTERVAL 300000 // Every 5 min
@@ -199,6 +200,7 @@ void CWifiManager::listen() {
 
   server->on("/wifi", HTTP_GET | HTTP_POST, [this](AsyncWebServerRequest *request) { handleWifi(request); });
   server->on("/device", HTTP_GET | HTTP_POST, [this](AsyncWebServerRequest *request) { handleDevice(request); });
+  server->on("/servo", HTTP_GET | HTTP_POST, [this](AsyncWebServerRequest *request) { handleServo(request); });
   //
   server->on("/factory_reset", HTTP_POST, [this](AsyncWebServerRequest *request) { handleFactoryReset(request); });
   server->on("/reboot", HTTP_POST, [this](AsyncWebServerRequest *request) { handleReboot(request); });
@@ -626,6 +628,44 @@ void CWifiManager::handleDevice(AsyncWebServerRequest *request) {
     printHTMLBottom(response);
     request->send(response);
   }
+  intLEDOff();
+}
+
+void CWifiManager::handleServo(AsyncWebServerRequest *request) {
+  Log.traceln("handleServo: %s", request->methodToString());
+  intLEDOn();
+
+  if (request->method() == HTTP_POST) {
+    if (request->hasArg("ch") && request->hasArg("val") && device) {
+      uint8_t ch  = (uint8_t)constrain(atoi(request->arg("ch").c_str()),  0, SERVO_COUNT - 1);
+      uint8_t val = (uint8_t)constrain(atoi(request->arg("val").c_str()), 0, 100);
+      // Map 0-100 → 0-180°
+      uint8_t angle = (uint8_t)((uint16_t)val * 180 / 100);
+      device->getServoManager()->setAngle(ch, angle);
+      Log.noticeln("Servo ch%d → %d%% (%d°)", ch, val, angle);
+    }
+    AsyncWebServerResponse *resp = request->beginResponse(204); // No Content
+    request->send(resp);
+  } else {
+    // Build page with current slider positions (back-convert angle→0-100)
+    uint8_t v[SERVO_COUNT];
+    if (device) {
+      CServoManager *sm = device->getServoManager();
+      for (uint8_t i = 0; i < SERVO_COUNT; i++) {
+        v[i] = (uint8_t)((uint16_t)sm->getAngle(i) * 100 / 180);
+      }
+    } else {
+      memset(v, 0, sizeof(v));
+    }
+    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 3072);
+    printHTMLTop(response);
+    response->printf_P(htmlServo,
+      v[0], v[0], v[1], v[1], v[2], v[2],
+      v[3], v[3], v[4], v[4], v[5], v[5]);
+    printHTMLBottom(response);
+    request->send(response);
+  }
+
   intLEDOff();
 }
 

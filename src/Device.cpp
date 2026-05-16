@@ -30,7 +30,15 @@ CDevice::CDevice() {
   _state = DeviceState::INITIALIZING;
   tMillisUp = millis();
 
-    #if (defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)) && defined(OLED)
+  #ifdef CONFIG_IDF_TARGET_ESP32C3
+    // ESP32C3 uses GPIO 6,7 for SDA,SCL - see https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/
+    if (Wire.begin(GPIO_NUM_7, GPIO_NUM_6)) {
+      Log.errorln(F("ESP32C3 I2C Wire initialization failed on pins SDA:%d, SCL:%d"), GPIO_NUM_7, GPIO_NUM_6);
+    };
+    delay(1000);
+  #endif
+
+  #if (defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)) && defined(OLED)
     // ESP32C3 and ESP32S3 variants in this project use GPIO 5=SDA and GPIO 6=SCL for the OLED bus.
     Wire.begin(GPIO_NUM_5, GPIO_NUM_6);
     Wire.setClock(400000); // 400kHz I2C
@@ -88,6 +96,7 @@ CDevice::CDevice() {
 
 
   Log.infoln(F("Device initialized"));
+  servoManager.setup();
 }
 
 void CDevice::setState(DeviceState state) {
@@ -142,6 +151,7 @@ CDevice::~CDevice() {
 }
 
 void CDevice::loop() {
+  servoManager.loop();
   #ifdef OLED
   #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
 

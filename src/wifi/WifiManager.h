@@ -49,6 +49,7 @@ private:
   void handleWifi(AsyncWebServerRequest *request);
 
   void handleDevice(AsyncWebServerRequest *request);
+  void handleServo(AsyncWebServerRequest *request);
   void handleFactoryReset(AsyncWebServerRequest *request);
   void handleReboot(AsyncWebServerRequest *request);
   void handleStyleCSS(AsyncWebServerRequest *request);

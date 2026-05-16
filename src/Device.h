@@ -3,6 +3,7 @@
 #include <functional>
 #include <deque>
 #include "Configuration.h"
+#include "ServoManager.h"
 
 #ifdef OLED
   #include <Adafruit_SSD1306.h>
@@ -30,6 +31,8 @@ public:
   void setState(DeviceState state);
   void setBootProgress(uint8_t percent); // 0-100
 
+  CServoManager* getServoManager() { return &servoManager; }
+
   // Set WiFi info for OLED display (call before setState)
   void setWifiAPInfo(const char* ssid, const char* password, const char* ip);
   void setWifiConnectedInfo(const char* ip);
@@ -46,6 +49,7 @@ private:
   DeviceState _state;
   unsigned long tMillisUp;
   unsigned long minDelayMs;
+  CServoManager servoManager;
 
   #ifdef OLED
     unsigned long tMillisDisplayToggle;
