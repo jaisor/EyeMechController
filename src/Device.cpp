@@ -25,7 +25,9 @@ static const char* deviceStateToString(DeviceState state) {
   }
 }
 
-CDevice::CDevice() {
+CDevice::CDevice()
+    : eyeMechManager(&servoManager)
+{
 
   _state = DeviceState::INITIALIZING;
   tMillisUp = millis();
@@ -97,6 +99,7 @@ CDevice::CDevice() {
 
   Log.infoln(F("Device initialized"));
   servoManager.setup();
+  eyeMechManager.setup();
 }
 
 void CDevice::setState(DeviceState state) {
@@ -152,6 +155,7 @@ CDevice::~CDevice() {
 
 void CDevice::loop() {
   servoManager.loop();
+  eyeMechManager.loop();
   #ifdef OLED
   #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
 

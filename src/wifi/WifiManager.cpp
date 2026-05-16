@@ -201,6 +201,7 @@ void CWifiManager::listen() {
   server->on("/wifi", HTTP_GET | HTTP_POST, [this](AsyncWebServerRequest *request) { handleWifi(request); });
   server->on("/device", HTTP_GET | HTTP_POST, [this](AsyncWebServerRequest *request) { handleDevice(request); });
   server->on("/servo", HTTP_GET | HTTP_POST, [this](AsyncWebServerRequest *request) { handleServo(request); });
+  server->on("/eyemech", HTTP_GET | HTTP_POST, [this](AsyncWebServerRequest *request) { handleEyeMech(request); });
   //
   server->on("/factory_reset", HTTP_POST, [this](AsyncWebServerRequest *request) { handleFactoryReset(request); });
   server->on("/reboot", HTTP_POST, [this](AsyncWebServerRequest *request) { handleReboot(request); });
@@ -662,6 +663,40 @@ void CWifiManager::handleServo(AsyncWebServerRequest *request) {
     response->printf_P(htmlServo,
       v[0], v[0], v[1], v[1], v[2], v[2],
       v[3], v[3], v[4], v[4], v[5], v[5]);
+    printHTMLBottom(response);
+    request->send(response);
+  }
+
+  intLEDOff();
+}
+
+void CWifiManager::handleEyeMech(AsyncWebServerRequest *request) {
+  Log.traceln("handleEyeMech: %s", request->methodToString());
+  intLEDOn();
+
+  if (request->method() == HTTP_POST) {
+    if (device) {
+      String action = request->arg("action");
+      if (action == "look" && request->hasArg("x") && request->hasArg("y")) {
+        uint8_t x = (uint8_t)constrain(atoi(request->arg("x").c_str()), 0, 100);
+        uint8_t y = (uint8_t)constrain(atoi(request->arg("y").c_str()), 0, 100);
+        if (request->hasArg("speed")) {
+          uint8_t spd = (uint8_t)constrain(atoi(request->arg("speed").c_str()), 1, 8);
+          device->getEyeMechManager()->setSpeed(spd);
+        }
+        device->getEyeMechManager()->lookAt(x, y);
+        Log.noticeln("EyeMech lookAt(%d, %d)", x, y);
+      } else if (action == "blink") {
+        device->getEyeMechManager()->blink();
+        Log.noticeln("EyeMech blink");
+      }
+    }
+    AsyncWebServerResponse *resp = request->beginResponse(204);
+    request->send(resp);
+  } else {
+    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 2048);
+    printHTMLTop(response);
+    response->printf_P(htmlEyeMech);
     printHTMLBottom(response);
     request->send(response);
   }

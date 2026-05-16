@@ -50,6 +50,7 @@ private:
 
   void handleDevice(AsyncWebServerRequest *request);
   void handleServo(AsyncWebServerRequest *request);
+  void handleEyeMech(AsyncWebServerRequest *request);
   void handleFactoryReset(AsyncWebServerRequest *request);
   void handleReboot(AsyncWebServerRequest *request);
   void handleStyleCSS(AsyncWebServerRequest *request);
