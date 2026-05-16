@@ -5,13 +5,13 @@
 
 // Servo channel assignments
 // Right eye: channels 0–2
-#define EYE_RIGHT_UD    0   // Right eye up / down
-#define EYE_RIGHT_LR    1   // Right eye left / right
+#define EYE_RIGHT_LR    0   // Right eye up / down
+#define EYE_RIGHT_UD    1   // Right eye left / right
 #define EYE_RIGHT_LID   2   // Right eyelid open / close
 
 // Left eye: channels 3–5
-#define EYE_LEFT_UD     3   // Left eye up / down
-#define EYE_LEFT_LR     4   // Left eye left / right
+#define EYE_LEFT_LR     3   // Left eye up / down
+#define EYE_LEFT_UD     4   // Left eye left / right
 #define EYE_LEFT_LID    5   // Left eyelid open / close
 
 // Physical servo range for the eye mechanism (degrees)

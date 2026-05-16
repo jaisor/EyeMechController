@@ -244,16 +244,17 @@ const char htmlEyeMech[] PROGMEM = R"=====(
         <button id="emcenter" style="width:auto;margin:0;" onclick="doCenter()">&#8857; Center</button>
         <button id="emblink"  class="secondary" style="width:auto;margin:0;" onclick="doBlink()">&#128065; Blink</button>
       </div>
-      <div id="pad" style="width:300px;height:300px;border:2px solid var(--pico-primary);border-radius:var(--pico-border-radius);margin:0 auto;cursor:crosshair;position:relative;background:var(--pico-card-background-color);user-select:none;">
-        <div id="dot" style="position:absolute;width:12px;height:12px;background:var(--pico-primary);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;display:none;"></div>
-      </div>
+      <svg id="pad" width="300" height="300" viewBox="0 0 300 300" style="display:block;margin:0 auto;cursor:crosshair;user-select:none;">
+        <circle cx="150" cy="150" r="148" fill="var(--pico-card-background-color)" stroke="var(--pico-primary)" stroke-width="2"/>
+        <circle id="dot" cx="150" cy="150" r="6" fill="var(--pico-primary)" display="none"/>
+      </svg>
       <div style="width:300px;margin:.75rem auto 0;">
         <label for="emspeed" style="display:flex;justify-content:space-between;margin-bottom:.25rem;">
           <span>Speed</span><span id="emspeedlabel">Fast</span>
         </label>
         <input id="emspeed" type="range" min="1" max="8" value="1" style="margin-bottom:0;">
       </div>
-      <p id="emstatus" style="text-align:center;color:var(--pico-muted-color);margin-top:.5rem;">Click the square to look &bull; right-click to blink</p>
+      <p id="emstatus" style="text-align:center;color:var(--pico-muted-color);margin-top:.5rem;">Click or drag to look &bull; right-click to blink</p>
       <script>
         (function(){
           var pad      = document.getElementById('pad');
@@ -272,7 +273,7 @@ const char htmlEyeMech[] PROGMEM = R"=====(
             fetch('/eyemech', { method: 'POST', body: body });
           }
           function doCenter() {
-            dot.style.left = '150px'; dot.style.top = '150px'; dot.style.display = 'block';
+            dot.setAttribute('cx', '150'); dot.setAttribute('cy', '150'); dot.removeAttribute('display');
             status.textContent = 'Centering\u2026';
             sendEye('look', 50, 50);
           }
@@ -280,22 +281,36 @@ const char htmlEyeMech[] PROGMEM = R"=====(
             status.textContent = 'Blinking!';
             var body = new URLSearchParams(); body.append('action','blink');
             fetch('/eyemech', { method: 'POST', body: body });
-            setTimeout(function() { status.textContent = 'Click the square to look \u2022 right-click to blink'; }, 600);
+            setTimeout(function() { status.textContent = 'Click or drag to look \u2022 right-click to blink'; }, 600);
           }
           window.doCenter = doCenter;
           window.doBlink  = doBlink;
-          pad.addEventListener('click', function(e) {
+          var isDown = false;
+          var lastSend = 0;
+          function handleMove(e) {
             var r = pad.getBoundingClientRect();
-            var x = Math.round((e.clientX - r.left) / r.width  * 100);
-            var y = Math.round(100 - (e.clientY - r.top) / r.height * 100);
-            x = Math.max(0, Math.min(100, x));
-            y = Math.max(0, Math.min(100, y));
-            dot.style.left    = (e.clientX - r.left) + 'px';
-            dot.style.top     = (e.clientY - r.top)  + 'px';
-            dot.style.display = 'block';
+            var radius = r.width / 2;
+            var dx = e.clientX - (r.left + radius);
+            var dy = e.clientY - (r.top  + radius);
+            var dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > radius) { dx = dx*radius/dist; dy = dy*radius/dist; }
+            dot.setAttribute('cx', radius + dx);
+            dot.setAttribute('cy', radius + dy);
+            dot.removeAttribute('display');
+            var x = Math.round((radius + dx) / r.width  * 100);
+            var y = Math.round(100 - (radius + dy) / r.height * 100);
             status.textContent = 'Looking at (' + x + ', ' + y + ')';
-            sendEye('look', x, y);
+            var now = Date.now();
+            if (now - lastSend > 50) { lastSend = now; sendEye('look', x, y); }
+          }
+          pad.addEventListener('mousedown', function(e) {
+            if (e.button === 0) { isDown = true; handleMove(e); }
           });
+          pad.addEventListener('mousemove', function(e) {
+            if (isDown) handleMove(e);
+          });
+          pad.addEventListener('mouseup',    function(e) { if (e.button === 0) isDown = false; });
+          pad.addEventListener('mouseleave', function()  { isDown = false; });
           pad.addEventListener('contextmenu', function(e) {
             e.preventDefault();
             doBlink();
