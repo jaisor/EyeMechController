@@ -625,7 +625,10 @@ void CWifiManager::handleDevice(AsyncWebServerRequest *request) {
 
     AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 6144);
     printHTMLTop(response);
-    response->printf_P(htmlDevice, configuration.ledEnabled ? "checked" : "", configuration.name, tzOptions.c_str());
+    response->printf_P(htmlDevice,
+      configuration.ledEnabled ? "checked" : "",
+      configuration.name,
+      tzOptions.c_str());
     printHTMLBottom(response);
     request->send(response);
   }
@@ -638,31 +641,54 @@ void CWifiManager::handleServo(AsyncWebServerRequest *request) {
 
   if (request->method() == HTTP_POST) {
     if (request->hasArg("ch") && request->hasArg("val") && device) {
-      uint8_t ch  = (uint8_t)constrain(atoi(request->arg("ch").c_str()),  0, SERVO_COUNT - 1);
-      uint8_t val = (uint8_t)constrain(atoi(request->arg("val").c_str()), 0, 100);
-      // Map 0-100 → 0-180°
-      uint8_t angle = (uint8_t)((uint16_t)val * 180 / 100);
-      device->getServoManager()->setAngle(ch, angle);
-      Log.noticeln("Servo ch%d → %d%% (%d°)", ch, val, angle);
-    }
-    AsyncWebServerResponse *resp = request->beginResponse(204); // No Content
-    request->send(resp);
-  } else {
-    // Build page with current slider positions (back-convert angle→0-100)
-    uint8_t v[SERVO_COUNT];
-    if (device) {
-      CServoManager *sm = device->getServoManager();
-      for (uint8_t i = 0; i < SERVO_COUNT; i++) {
-        v[i] = (uint8_t)((uint16_t)sm->getAngle(i) * 100 / 180);
-      }
+      uint8_t ch   = (uint8_t)constrain(atoi(request->arg("ch").c_str()),  0, SERVO_COUNT - 1);
+      uint16_t val = (uint16_t)constrain(atoi(request->arg("val").c_str()), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+      device->getServoManager()->setPulse(ch, val);
+      Log.noticeln("Servo ch%d → pulse=%d", ch, val);
+      AsyncWebServerResponse *resp = request->beginResponse(204); // No Content
+      request->send(resp);
     } else {
-      memset(v, 0, sizeof(v));
+      // Servo config save
+      for (uint8_t i = 0; i < 6; i++) {
+        char keyMin[16], keyMax[16];
+        snprintf(keyMin, sizeof(keyMin), "eyeServoMin_%u", i);
+        snprintf(keyMax, sizeof(keyMax), "eyeServoMax_%u", i);
+        if (request->hasArg(keyMin))
+          configuration.eyeServoRangeMin[i] = (uint16_t)constrain(atoi(request->arg(keyMin).c_str()), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+        if (request->hasArg(keyMax))
+          configuration.eyeServoRangeMax[i] = (uint16_t)constrain(atoi(request->arg(keyMax).c_str()), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+      }
+      uint8_t invertMask = 0;
+      for (uint8_t i = 0; i < 6; i++) {
+        char key[16];
+        snprintf(key, sizeof(key), "servoInvert_%u", i);
+        if (request->hasArg(key)) invertMask |= (1u << i);
+      }
+      configuration.servoInvertedMask = invertMask;
+      EEPROM_saveConfig();
+      request->redirect("servo");
     }
-    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 3072);
+  } else {
+    // Slider defaults: midpoint of each servo's configured range (raw pulse)
+    uint16_t v[SERVO_COUNT];
+    for (uint8_t i = 0; i < SERVO_COUNT; i++) {
+      v[i] = (configuration.eyeServoRangeMin[i] + configuration.eyeServoRangeMax[i]) / 2;
+    }
+    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 5120);
     printHTMLTop(response);
     response->printf_P(htmlServo,
-      v[0], v[0], v[1], v[1], v[2], v[2],
-      v[3], v[3], v[4], v[4], v[5], v[5]);
+      v[0], (unsigned)configuration.eyeServoRangeMin[0], (unsigned)configuration.eyeServoRangeMax[0], v[0],
+      v[1], (unsigned)configuration.eyeServoRangeMin[1], (unsigned)configuration.eyeServoRangeMax[1], v[1],
+      v[2], (unsigned)configuration.eyeServoRangeMin[2], (unsigned)configuration.eyeServoRangeMax[2], v[2],
+      v[3], (unsigned)configuration.eyeServoRangeMin[3], (unsigned)configuration.eyeServoRangeMax[3], v[3],
+      v[4], (unsigned)configuration.eyeServoRangeMin[4], (unsigned)configuration.eyeServoRangeMax[4], v[4],
+      v[5], (unsigned)configuration.eyeServoRangeMin[5], (unsigned)configuration.eyeServoRangeMax[5], v[5],
+      (unsigned)configuration.eyeServoRangeMin[0], (unsigned)configuration.eyeServoRangeMax[0], (configuration.servoInvertedMask & (1u<<0)) ? "checked" : "",
+      (unsigned)configuration.eyeServoRangeMin[1], (unsigned)configuration.eyeServoRangeMax[1], (configuration.servoInvertedMask & (1u<<1)) ? "checked" : "",
+      (unsigned)configuration.eyeServoRangeMin[2], (unsigned)configuration.eyeServoRangeMax[2], (configuration.servoInvertedMask & (1u<<2)) ? "checked" : "",
+      (unsigned)configuration.eyeServoRangeMin[3], (unsigned)configuration.eyeServoRangeMax[3], (configuration.servoInvertedMask & (1u<<3)) ? "checked" : "",
+      (unsigned)configuration.eyeServoRangeMin[4], (unsigned)configuration.eyeServoRangeMax[4], (configuration.servoInvertedMask & (1u<<4)) ? "checked" : "",
+      (unsigned)configuration.eyeServoRangeMin[5], (unsigned)configuration.eyeServoRangeMax[5], (configuration.servoInvertedMask & (1u<<5)) ? "checked" : "");
     printHTMLBottom(response);
     request->send(response);
   }
@@ -689,6 +715,10 @@ void CWifiManager::handleEyeMech(AsyncWebServerRequest *request) {
       } else if (action == "blink") {
         device->getEyeMechManager()->blink();
         Log.noticeln("EyeMech blink");
+      } else if (action == "eyelids" && request->hasArg("open")) {
+        uint8_t open = (uint8_t)constrain(atoi(request->arg("open").c_str()), 0, 100);
+        device->getEyeMechManager()->setEyelids(open);
+        Log.noticeln("EyeMech setEyelids(%d)", open);
       }
     }
     AsyncWebServerResponse *resp = request->beginResponse(204);

@@ -15,11 +15,14 @@
 #define EYE_LEFT_LID    5   // Left eyelid open / close
 
 // Physical servo range for the eye mechanism (degrees)
-#define EYE_SERVO_MIN   0
-#define EYE_SERVO_MAX   55
+#define EYE_SERVO_MIN       0
+#define EYE_SERVO_MAX       55
+
+// Eyelid servo range (degrees) – adjust independently of gaze servos
+#define EYE_LID_SERVO_MAX   22
 
 // Blink timing (ms): how long lids stay closed before re-opening
-#define EYE_BLINK_CLOSE_MS  80
+#define EYE_BLINK_CLOSE_MS  200
 
 // Smooth movement: interval (ms) between each interpolation step
 #define EYE_MOVE_STEP_INTERVAL_MS  10
@@ -52,8 +55,8 @@ public:
     void setSpeed(uint8_t speed);
 
 private:
-    // Map a value in [0, 100] to the physical servo range [EYE_SERVO_MIN, EYE_SERVO_MAX].
-    uint8_t mapToServo(uint8_t value) const;
+    // Map a value in [0, 100] to the configured PWM pulse range for the given servo channel.
+    uint16_t mapServo(uint8_t value, uint8_t channel) const;
 
     CServoManager* _servo;
 

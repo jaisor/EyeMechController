@@ -205,27 +205,27 @@ const char htmlServo[] PROGMEM = R"=====(
       <fieldset>
         <label>
           Servo 0 &nbsp;<output id='sv0o'>%u</output>
-          <input type='range' min='0' max='100' value='%u' oninput='sv0o.value=this.value;setSv(0,this.value)'>
+          <input type='range' min='%u' max='%u' value='%u' oninput='sv0o.value=this.value;setSv(0,this.value)'>
         </label>
         <label>
           Servo 1 &nbsp;<output id='sv1o'>%u</output>
-          <input type='range' min='0' max='100' value='%u' oninput='sv1o.value=this.value;setSv(1,this.value)'>
+          <input type='range' min='%u' max='%u' value='%u' oninput='sv1o.value=this.value;setSv(1,this.value)'>
         </label>
         <label>
           Servo 2 &nbsp;<output id='sv2o'>%u</output>
-          <input type='range' min='0' max='100' value='%u' oninput='sv2o.value=this.value;setSv(2,this.value)'>
+          <input type='range' min='%u' max='%u' value='%u' oninput='sv2o.value=this.value;setSv(2,this.value)'>
         </label>
         <label>
           Servo 3 &nbsp;<output id='sv3o'>%u</output>
-          <input type='range' min='0' max='100' value='%u' oninput='sv3o.value=this.value;setSv(3,this.value)'>
+          <input type='range' min='%u' max='%u' value='%u' oninput='sv3o.value=this.value;setSv(3,this.value)'>
         </label>
         <label>
           Servo 4 &nbsp;<output id='sv4o'>%u</output>
-          <input type='range' min='0' max='100' value='%u' oninput='sv4o.value=this.value;setSv(4,this.value)'>
+          <input type='range' min='%u' max='%u' value='%u' oninput='sv4o.value=this.value;setSv(4,this.value)'>
         </label>
         <label>
           Servo 5 &nbsp;<output id='sv5o'>%u</output>
-          <input type='range' min='0' max='100' value='%u' oninput='sv5o.value=this.value;setSv(5,this.value)'>
+          <input type='range' min='%u' max='%u' value='%u' oninput='sv5o.value=this.value;setSv(5,this.value)'>
         </label>
       </fieldset>
       <script>
@@ -236,6 +236,54 @@ const char htmlServo[] PROGMEM = R"=====(
           fetch('/servo', { method: 'POST', body: body });
         }
       </script>
+      <form method='POST' action='servo' enctype='application/x-www-form-urlencoded' delay='2000'>
+        <fieldset>
+          <legend>Servo Configuration (PWM pulse: 150–600)</legend>
+          <div class='grid'>
+            <span><small><b>Servo</b></small></span>
+            <span><small><b>Min pulse</b></small></span>
+            <span><small><b>Max pulse</b></small></span>
+            <span><small><b>Invert</b></small></span>
+          </div>
+          <div class='grid'>
+            <span>Servo 0</span>
+            <input type='number' name='eyeServoMin_0' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMax_0' min='150' max='600' value='%u'>
+            <label><input type='checkbox' name='servoInvert_0' %s></label>
+          </div>
+          <div class='grid'>
+            <span>Servo 1</span>
+            <input type='number' name='eyeServoMin_1' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMax_1' min='150' max='600' value='%u'>
+            <label><input type='checkbox' name='servoInvert_1' %s></label>
+          </div>
+          <div class='grid'>
+            <span>Servo 2</span>
+            <input type='number' name='eyeServoMin_2' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMax_2' min='150' max='600' value='%u'>
+            <label><input type='checkbox' name='servoInvert_2' %s></label>
+          </div>
+          <div class='grid'>
+            <span>Servo 3</span>
+            <input type='number' name='eyeServoMin_3' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMax_3' min='150' max='600' value='%u'>
+            <label><input type='checkbox' name='servoInvert_3' %s></label>
+          </div>
+          <div class='grid'>
+            <span>Servo 4</span>
+            <input type='number' name='eyeServoMin_4' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMax_4' min='150' max='600' value='%u'>
+            <label><input type='checkbox' name='servoInvert_4' %s></label>
+          </div>
+          <div class='grid'>
+            <span>Servo 5</span>
+            <input type='number' name='eyeServoMin_5' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMax_5' min='150' max='600' value='%u'>
+            <label><input type='checkbox' name='servoInvert_5' %s></label>
+          </div>
+        </fieldset>
+        <button type='submit' value='Submit'>Save Config...</button>
+      </form>
 )=====";
 
 const char htmlEyeMech[] PROGMEM = R"=====(
@@ -243,6 +291,7 @@ const char htmlEyeMech[] PROGMEM = R"=====(
       <div style="display:flex;justify-content:center;gap:.5rem;margin-bottom:.75rem;">
         <button id="emcenter" style="width:auto;margin:0;" onclick="doCenter()">&#8857; Center</button>
         <button id="emblink"  class="secondary" style="width:auto;margin:0;" onclick="doBlink()">&#128065; Blink</button>
+        <button id="emlids"   class="contrast"   style="width:auto;margin:0;" onclick="doToggleLids()">&#128065; Close Lids</button>
       </div>
       <svg id="pad" width="300" height="300" viewBox="0 0 300 300" style="display:block;margin:0 auto;cursor:crosshair;user-select:none;">
         <circle cx="150" cy="150" r="148" fill="var(--pico-card-background-color)" stroke="var(--pico-primary)" stroke-width="2"/>
@@ -283,8 +332,18 @@ const char htmlEyeMech[] PROGMEM = R"=====(
             fetch('/eyemech', { method: 'POST', body: body });
             setTimeout(function() { status.textContent = 'Click or drag to look \u2022 right-click to blink'; }, 600);
           }
+          var lidsOpen = true;
+          function doToggleLids() {
+            lidsOpen = !lidsOpen;
+            var btn = document.getElementById('emlids');
+            btn.textContent = lidsOpen ? '\uD83D\uDC41 Close Lids' : '\uD83D\uDC41 Open Lids';
+            status.textContent = lidsOpen ? 'Eyelids opened' : 'Eyelids closed';
+            var body = new URLSearchParams(); body.append('action','eyelids'); body.append('open', lidsOpen ? '100' : '0');
+            fetch('/eyemech', { method: 'POST', body: body });
+          }
           window.doCenter = doCenter;
           window.doBlink  = doBlink;
+          window.doToggleLids = doToggleLids;
           var isDown = false;
           var lastSend = 0;
           function handleMove(e) {

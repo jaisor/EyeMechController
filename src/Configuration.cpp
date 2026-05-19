@@ -103,6 +103,11 @@ void EEPROM_loadConfig() {
       #endif
     #endif
     configuration.ledEnabled = false;
+    for (int i = 0; i < 6; i++) {
+      configuration.eyeServoRangeMin[i] = SERVO_PULSE_MIN; // (~0°)
+      configuration.eyeServoRangeMax[i] = SERVO_PULSE_MAX; // (~180°)
+    }
+    configuration.servoInvertedMask = 0;
   }
 
 #ifdef LED

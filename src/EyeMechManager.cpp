@@ -1,6 +1,7 @@
 #include "EyeMechManager.h"
 
 #include <ArduinoLog.h>
+#include "Configuration.h"
 
 CEyeMechManager::CEyeMechManager(CServoManager* servoManager)
     : _servo(servoManager)
@@ -27,11 +28,10 @@ void CEyeMechManager::loop() {
     // --- Blink state machine ---
     if (_blinkState == BLINK_CLOSING) {
         if (millis() - _blinkPhaseMs >= EYE_BLINK_CLOSE_MS) {
-            uint8_t angle = mapToServo(_eyelidOpen);
-            _servo->setAngle(EYE_RIGHT_LID, angle);
-            _servo->setAngle(EYE_LEFT_LID, angle);
+            _servo->setPulse(EYE_RIGHT_LID, mapServo(_eyelidOpen, EYE_RIGHT_LID));
+            _servo->setPulse(EYE_LEFT_LID, mapServo(_eyelidOpen, EYE_LEFT_LID));
             _blinkState = BLINK_IDLE;
-            Log.verboseln("[EyeMechManager] Blink complete");
+            Log.verboseln("[EyeMechManager] Blink complete=%u, %u");
         }
     }
 
@@ -76,13 +76,13 @@ void CEyeMechManager::lookAt(uint8_t x, uint8_t y) {
 }
 
 void CEyeMechManager::setRightEye(uint8_t x, uint8_t y) {
-    _servo->setAngle(EYE_RIGHT_LR, mapToServo(x));
-    _servo->setAngle(EYE_RIGHT_UD, mapToServo(y));
+    _servo->setPulse(EYE_RIGHT_LR, mapServo(x, EYE_RIGHT_LR));
+    _servo->setPulse(EYE_RIGHT_UD, mapServo(y, EYE_RIGHT_UD));
 }
 
 void CEyeMechManager::setLeftEye(uint8_t x, uint8_t y) {
-    _servo->setAngle(EYE_LEFT_LR, mapToServo(x));
-    _servo->setAngle(EYE_LEFT_UD, mapToServo(y));
+    _servo->setPulse(EYE_LEFT_LR, mapServo(x, EYE_LEFT_LR));
+    _servo->setPulse(EYE_LEFT_UD, mapServo(y, EYE_LEFT_UD));
 }
 
 // ---------------------------------------------------------------------------
@@ -92,17 +92,16 @@ void CEyeMechManager::setLeftEye(uint8_t x, uint8_t y) {
 void CEyeMechManager::setEyelids(uint8_t openPercent) {
     if (openPercent > 100) openPercent = 100;
     _eyelidOpen = openPercent;
-    uint8_t angle = mapToServo(openPercent);
-    _servo->setAngle(EYE_RIGHT_LID, angle);
-    _servo->setAngle(EYE_LEFT_LID, angle);
+    _servo->setPulse(EYE_RIGHT_LID, mapServo(openPercent, EYE_RIGHT_LID));
+    _servo->setPulse(EYE_LEFT_LID, mapServo(openPercent, EYE_LEFT_LID));
 }
 
 void CEyeMechManager::blink() {
     if (_blinkState != BLINK_IDLE) return; // Already blinking – ignore
 
     // Snap eyelids shut and start the timer
-    _servo->setAngle(EYE_RIGHT_LID, EYE_SERVO_MIN);
-    _servo->setAngle(EYE_LEFT_LID, EYE_SERVO_MIN);
+    _servo->setPulse(EYE_RIGHT_LID, configuration.eyeServoRangeMin[EYE_RIGHT_LID]);
+    _servo->setPulse(EYE_LEFT_LID, configuration.eyeServoRangeMin[EYE_LEFT_LID]);
     _blinkState   = BLINK_CLOSING;
     _blinkPhaseMs = millis();
     Log.verboseln("[EyeMechManager] Blink started");
@@ -118,8 +117,10 @@ void CEyeMechManager::setSpeed(uint8_t speed) {
     _speed = speed;
 }
 
-uint8_t CEyeMechManager::mapToServo(uint8_t value) const {
-    // Linear map: [0, 100] → [EYE_SERVO_MIN, EYE_SERVO_MAX]
-    return (uint8_t)(EYE_SERVO_MIN +
-        ((uint32_t)(EYE_SERVO_MAX - EYE_SERVO_MIN) * value) / 100);
+uint16_t CEyeMechManager::mapServo(uint8_t value, uint8_t channel) const {
+    // Linear map: [0, 100] → [eyeServoRangeMin[ch], eyeServoRangeMax[ch]] (PWM pulse ticks)
+    uint16_t lo = configuration.eyeServoRangeMin[channel];
+    uint16_t hi = configuration.eyeServoRangeMax[channel];
+    if (hi < lo) hi = lo;
+    return (uint16_t)(lo + ((uint32_t)(hi - lo) * value) / 100);
 }

@@ -110,6 +110,10 @@
   #endif
 #endif
 
+// Standard servo pulse width bounds (12-bit ticks at 50 Hz)
+// 50 Hz → 20 ms period → 4096 ticks; 1 tick ≈ 4.88 µs
+#define SERVO_PULSE_MIN  150   // ~0°   (~730 µs)
+#define SERVO_PULSE_MAX  600   // ~180° (~2930 µs)
 
 struct configuration_t {
 
@@ -142,6 +146,15 @@ struct configuration_t {
     char name[128];
 
     uint8_t ledEnabled;
+
+    // Eye mechanism servo ranges in raw PWM ticks (150 = ~0°, 600 = ~180°), one min/max pair per servo channel.
+    // Indexed by EYE_RIGHT_LR(0), EYE_RIGHT_UD(1), EYE_RIGHT_LID(2),
+    //            EYE_LEFT_LR(3),  EYE_LEFT_UD(4),  EYE_LEFT_LID(5)
+    uint16_t eyeServoRangeMin[6];
+    uint16_t eyeServoRangeMax[6];
+
+    // Servo inversion bitmask: bit N set means channel N PWM is inverted (PULSE_MIN + PULSE_MAX - pulse)
+    uint8_t servoInvertedMask;
 
     char _loaded[7]; // used to check if EEPROM was correctly set    
 };
