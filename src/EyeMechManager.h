@@ -38,11 +38,11 @@ public:
     // Move both eyes to track a point on a 0–100 plane.
     //   x=0   → full left,  x=100 → full right
     //   y=0   → full down,  y=100 → full up
-    void lookAt(uint8_t x, uint8_t y);
+    void lookAt(float x, float y);
 
-    // Control each eye independently (x/y in [0, 100]).
-    void setRightEye(uint8_t x, uint8_t y);
-    void setLeftEye(uint8_t x, uint8_t y);
+    // Control each eye independently (x/y in [0.0, 100.0]).
+    void setRightEye(float x, float y);
+    void setLeftEye(float x, float y);
 
     // Set eyelid openness for both eyes simultaneously.
     // openPercent: 0 = fully closed, 100 = fully open.
@@ -55,17 +55,17 @@ public:
     void setSpeed(uint8_t speed);
 
 private:
-    // Map a value in [0, 100] to the configured PWM pulse range for the given servo channel.
-    uint16_t mapServo(uint8_t value, uint8_t channel) const;
+    // Map a value in [0.0, 100.0] to the configured PWM pulse range for the given servo channel.
+    uint16_t mapServo(float value, uint8_t channel) const;
 
     CServoManager* _servo;
 
     // Retained eyelid openness (0-100) so blink can restore the previous position.
     uint8_t _eyelidOpen;
 
-    // Smooth movement: current and target gaze position in [0, 100]
-    uint8_t       _currentX, _currentY;
-    uint8_t       _targetX,  _targetY;
+    // Smooth movement: current and target gaze position in [0.0, 100.0]
+    float         _currentX, _currentY;
+    float         _targetX,  _targetY;
     uint8_t       _speed;          // 1 = fastest (instant), 8 = slowest (1/8th)
     unsigned long _moveStepMs;     // timestamp of last movement step
 

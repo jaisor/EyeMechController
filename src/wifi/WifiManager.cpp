@@ -704,8 +704,8 @@ void CWifiManager::handleEyeMech(AsyncWebServerRequest *request) {
     if (device) {
       String action = request->arg("action");
       if (action == "look" && request->hasArg("x") && request->hasArg("y")) {
-        uint8_t x = (uint8_t)constrain(atoi(request->arg("x").c_str()), 0, 100);
-        uint8_t y = (uint8_t)constrain(atoi(request->arg("y").c_str()), 0, 100);
+        float x = constrain((float)atof(request->arg("x").c_str()), 0.0f, 100.0f);
+        float y = constrain((float)atof(request->arg("y").c_str()), 0.0f, 100.0f);
         if (request->hasArg("speed")) {
           uint8_t spd = (uint8_t)constrain(atoi(request->arg("speed").c_str()), 1, 8);
           device->getEyeMechManager()->setSpeed(spd);

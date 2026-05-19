@@ -42,23 +42,22 @@ void CEyeMechManager::loop() {
     if (now - _moveStepMs < EYE_MOVE_STEP_INTERVAL_MS) return;
     _moveStepMs = now;
 
-    // step size: speed 1 → 100 (instant jump), speed 8 → 12 (1/8th)
-    uint8_t step = (uint8_t)(100 / _speed);
-    if (step == 0) step = 1;
+    // step size: speed 1 → 100 (instant jump), speed 8 → 12.5 (1/8th)
+    float step = 100.0f / _speed;
 
     if (_currentX < _targetX) {
-        uint8_t d = _targetX - _currentX;
+        float d = _targetX - _currentX;
         _currentX += (step < d ? step : d);
     } else if (_currentX > _targetX) {
-        uint8_t d = _currentX - _targetX;
+        float d = _currentX - _targetX;
         _currentX -= (step < d ? step : d);
     }
 
     if (_currentY < _targetY) {
-        uint8_t d = _targetY - _currentY;
+        float d = _targetY - _currentY;
         _currentY += (step < d ? step : d);
     } else if (_currentY > _targetY) {
-        uint8_t d = _currentY - _targetY;
+        float d = _currentY - _targetY;
         _currentY -= (step < d ? step : d);
     }
 
@@ -70,19 +69,19 @@ void CEyeMechManager::loop() {
 // Gaze control
 // ---------------------------------------------------------------------------
 
-void CEyeMechManager::lookAt(uint8_t x, uint8_t y) {
-    _targetX = x;
-    _targetY = y;
+void CEyeMechManager::lookAt(float x, float y) {
+    _targetX = constrain(x, 0.0f, 100.0f);
+    _targetY = constrain(y, 0.0f, 100.0f);
 }
 
-void CEyeMechManager::setRightEye(uint8_t x, uint8_t y) {
-    _servo->setPulse(EYE_RIGHT_LR, mapServo(x, EYE_RIGHT_LR));
-    _servo->setPulse(EYE_RIGHT_UD, mapServo(y, EYE_RIGHT_UD));
+void CEyeMechManager::setRightEye(float x, float y) {
+    _servo->setPulse(EYE_RIGHT_LR, mapServo(100.0f - x, EYE_RIGHT_LR));  // x→LR (inverted)
+    _servo->setPulse(EYE_RIGHT_UD, mapServo(100.0f - y, EYE_RIGHT_UD));  // y→UD (inverted)
 }
 
-void CEyeMechManager::setLeftEye(uint8_t x, uint8_t y) {
-    _servo->setPulse(EYE_LEFT_LR, mapServo(x, EYE_LEFT_LR));
-    _servo->setPulse(EYE_LEFT_UD, mapServo(y, EYE_LEFT_UD));
+void CEyeMechManager::setLeftEye(float x, float y) {
+    _servo->setPulse(EYE_LEFT_LR, mapServo(100.0f - x, EYE_LEFT_LR));   // x→LR (inverted)
+    _servo->setPulse(EYE_LEFT_UD, mapServo(100.0f - y, EYE_LEFT_UD));   // y→UD (inverted)
 }
 
 // ---------------------------------------------------------------------------
@@ -117,10 +116,10 @@ void CEyeMechManager::setSpeed(uint8_t speed) {
     _speed = speed;
 }
 
-uint16_t CEyeMechManager::mapServo(uint8_t value, uint8_t channel) const {
-    // Linear map: [0, 100] → [eyeServoRangeMin[ch], eyeServoRangeMax[ch]] (PWM pulse ticks)
+uint16_t CEyeMechManager::mapServo(float value, uint8_t channel) const {
+    // Linear map: [0.0, 100.0] → [eyeServoRangeMin[ch], eyeServoRangeMax[ch]] (PWM pulse ticks)
     uint16_t lo = configuration.eyeServoRangeMin[channel];
     uint16_t hi = configuration.eyeServoRangeMax[channel];
     if (hi < lo) hi = lo;
-    return (uint16_t)(lo + ((uint32_t)(hi - lo) * value) / 100);
+    return (uint16_t)(lo + (float)(hi - lo) * value / 100.0f);
 }

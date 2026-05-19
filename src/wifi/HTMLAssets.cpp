@@ -293,11 +293,11 @@ const char htmlEyeMech[] PROGMEM = R"=====(
         <button id="emblink"  class="secondary" style="width:auto;margin:0;" onclick="doBlink()">&#128065; Blink</button>
         <button id="emlids"   class="contrast"   style="width:auto;margin:0;" onclick="doToggleLids()">&#128065; Close Lids</button>
       </div>
-      <svg id="pad" width="300" height="300" viewBox="0 0 300 300" style="display:block;margin:0 auto;cursor:crosshair;user-select:none;">
-        <circle cx="150" cy="150" r="148" fill="var(--pico-card-background-color)" stroke="var(--pico-primary)" stroke-width="2"/>
-        <circle id="dot" cx="150" cy="150" r="6" fill="var(--pico-primary)" display="none"/>
+      <svg id="pad" width="900" height="900" viewBox="0 0 900 900" style="display:block;margin:0 auto;cursor:crosshair;user-select:none;">
+        <circle cx="450" cy="450" r="444" fill="var(--pico-card-background-color)" stroke="var(--pico-primary)" stroke-width="2"/>
+        <circle id="dot" cx="450" cy="450" r="18" fill="var(--pico-primary)" display="none"/>
       </svg>
-      <div style="width:300px;margin:.75rem auto 0;">
+      <div style="width:900px;margin:.75rem auto 0;">
         <label for="emspeed" style="display:flex;justify-content:space-between;margin-bottom:.25rem;">
           <span>Speed</span><span id="emspeedlabel">Fast</span>
         </label>
@@ -322,7 +322,7 @@ const char htmlEyeMech[] PROGMEM = R"=====(
             fetch('/eyemech', { method: 'POST', body: body });
           }
           function doCenter() {
-            dot.setAttribute('cx', '150'); dot.setAttribute('cy', '150'); dot.removeAttribute('display');
+            dot.setAttribute('cx', '450'); dot.setAttribute('cy', '450'); dot.removeAttribute('display');
             status.textContent = 'Centering\u2026';
             sendEye('look', 50, 50);
           }
@@ -356,8 +356,8 @@ const char htmlEyeMech[] PROGMEM = R"=====(
             dot.setAttribute('cx', radius + dx);
             dot.setAttribute('cy', radius + dy);
             dot.removeAttribute('display');
-            var x = Math.round((radius + dx) / r.width  * 100);
-            var y = Math.round(100 - (radius + dy) / r.height * 100);
+            var x = Math.round((radius + dx) / r.width  * 1000) / 10;
+            var y = Math.round((100 - (radius + dy) / r.height * 100) * 10) / 10;
             status.textContent = 'Looking at (' + x + ', ' + y + ')';
             var now = Date.now();
             if (now - lastSend > 50) { lastSend = now; sendEye('look', x, y); }
