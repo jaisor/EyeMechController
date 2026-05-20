@@ -1,67 +1,126 @@
-# RingLight ESP LED Controller
+# ESP32 Animatronic Eye Mechanism
 
-![Glamor shot](img/Collage.jpg)
+WiFi-controlled animatronic eye mechanism powered by an ESP32 and a PCA9685 PWM servo driver. Supports real-time gaze control, smooth interpolated movement, per-servo trim calibration, non-blocking blinks, and full configuration via a built-in web interface with OTA firmware updates.
+
+> Forked from [jaisor/ESP_LED_Controller](https://github.com/jaisor/ESP_LED_Controller) — LED functionality is retained but the primary focus of this project is the eye mechanism.
+
+---
 
 ## Features
-* Two LED rings - outer (141 LEDs) and inner (126 LEDs) wired up in series for a total of 267 LEDs
-* Controlled by ESP32 (most stable). Code is compatible with ESP8266, but I was suffering stability issues with wifi and longer LED strips.
-* WiFi connected and managed
-    * creates a default AP, listening to http://192.168.4.1
-    * capable of joining existing 2.4GHz networks
-    * serves a webpage for managing LED - strip size, mode, brightness
-* Firmware update over WiFi - new `firmware.bin` file can be uploaded at `/update` after the IP address
 
-## Components
-* ESP32 - https://www.amazon.com/gp/product/B086MGH7JV
-* JST SM 3PIN LED Connector - https://www.amazon.com/gp/product/B075K4HLTQ
-* DC power connector - https://www.amazon.com/gp/product/B01N8VV78D
-* WS2812B LED strip high density strips 144 LEDs per strip x 2 - https://www.amazon.com/gp/product/B088FKZWDQ
-* DC 5v adapter - https://www.amazon.com/gp/product/B078RXZM4C
+- **6-axis eye mechanism** — two eyes, each with left/right, up/down, and eyelid servos
+- **Real-time gaze control** — click/drag touchpad in the web UI; fractional-precision coordinates sent over WiFi
+- **Smooth interpolated movement** — configurable speed (1–8) with per-step interpolation
+- **Per-servo trim calibration** — independent midpoint trim per channel, stored in flash
+- **Non-blocking blink** — three-phase state machine (close → hold pause → open)
+- **Web UI** — servo control sliders, gaze pad, eyelid toggle, blink button, servo config table
+- **OTA updates** — upload `firmware.bin` at `/update`
+- **LED strip support** — original LED animation modes preserved (optional, `#define LED`)
 
-## 3D filament 
-I used the ones below but likely many others will work. Make sure the white is translucent enough, print a 3 layer sheet and put it in-front of some LEDs.
-* ESUN PLA+ warm white - https://www.amazon.com/gp/product/B01EKEMIIS
-* ERYONE Matte PLA black - https://www.amazon.com/gp/product/B08HX1XF55
+---
 
-## Assembly and wiring
+## Hardware
 
-Print 4 of each:
-* [Dark Ring](stl/DarkRing.stl)
-* [Light Ring](stl/LightRing.stl)
-* [Bridge Hanger](stl/Hanger.stl)
+| Component | Notes |
+|---|---|
+| ESP32 (recommended) | Tested on ESP32-C3 and ESP32-S3 |
+| PCA9685 PWM Servo Driver | I²C address 0x40 |
+| 6× analog servos | Channels 0–5 on PCA9685 |
+| 5V power supply | Sized for servo stall current |
 
-Assemble as described below. Rotate the light ring segments by 45 degrees so they join in the middle of the dark ring segments. 
-This improves stability. If loose-fitting, use a few drops of superglue to set the dark and light rings together.
-![Assembly diagram](img/AssemblyAnnotated.png)
+### Servo Channel Mapping
 
-Cut the two LED strips to 141 and 126 LEDs. Keep as many of the existing wires and connectors as possible. 
-Wire the strips data in series - outer first then inner. The beginning of the outer ring data pin goes to the connector data pin. 
-Join the power wires in parallel: 5V/VCC together to the 5V connector pin; GND(-) together to GND on connector pin. 
-Providing power to both start and ends of the strips reduces voltage sag and ensures even light at all brightness levels.
+| Channel | Eye | Axis |
+|---|---|---|
+| 0 | Right | Left / Right |
+| 1 | Right | Up / Down |
+| 2 | Right | Eyelid |
+| 3 | Left | Left / Right |
+| 4 | Left | Up / Down |
+| 5 | Left | Eyelid |
 
-![Schematic](img/Schematic.png)
-![Wiring Closeup](img/WiringCloseup.jpg)
-![Wiring Complete](img/WiringComplete.jpg)
+---
 
-By default in `Configuration.h` the LEDs data is connected to pin 12 on the ESP, but most other GPIO pins can be used if needed.
+## 3D Model & Printing
 
-__LED_PIN_STRIP = 12__ - GPIO12 - above VIN (5V), GND and GPIO13
+> **TODO:** Add link to 3D model files (Printables / Thingiverse / GitHub Releases)
 
-![ESP32 pins](img/ESP32_pins.png)
+<!-- PLACEHOLDER – replace with actual link -->
+**3D Model:** _link coming soon_
 
-Solder the power and data cables between the LED connector, ESP32 and DC connector as shown below, using the basic 3D printable enclosure.
-The board is mounted above the DC connector with 3mm screws
+### Print Settings
 
-![ESP32 box assembled](img/ESP_box_assembled.jpg)
-![ESP32 box](img/ESP_box.jpg)
+> **TODO:** Document recommended print settings (material, layer height, supports, infill).
 
-Enclosure STL files. Print in PLA, PETG or any other hard filament.
-* [ESP32 Case STL](stl/ESP32Case.stl)
-* [ESP32 Lid STL](stl/ESP32Lid.stl)
+### Assembly Instructions
 
-## Configuration.h
+> **TODO:** Document step-by-step assembly — servo mounting, linkage geometry, eye socket fit, wiring harness routing.
 
-This file configures various default settings, like:
-* ESP pin used to drive the LED data (defaults are referenced below)
-* WiFi AP name/password
-* LED strip type, size, default brightness
+---
+
+## Software Setup
+
+### Building & Flashing
+
+```bash
+# Build for ESP32-C3 (default)
+pio run -e esp32c3
+
+# Upload via USB
+pio run -e esp32c3 -t upload
+
+# Serial monitor
+pio device monitor -b 115200
+```
+
+### OTA Updates
+
+Once the device is on the network, upload `firmware.bin` to:
+
+```
+http://<device-ip>/update
+```
+
+---
+
+## Configuration
+
+Edit [`src/Configuration.h`](src/Configuration.h) for compile-time defaults:
+
+- `DEVICE_NAME` — AP/hostname
+- `WIFI_SSID` / `WIFI_PASSWORD` — default station credentials
+- `SERVO_PULSE_MIN` / `SERVO_PULSE_MAX` — global PWM tick range (default 150–600)
+- `#define LED` / `#define RING_LIGHT` — enable LED strip features
+
+Runtime servo configuration (min, max, trim, invert per channel) is saved to flash and managed from the **Servo** page in the web UI.
+
+---
+
+## Web Interface
+
+| URL | Description |
+|---|---|
+| `/` | Main LED control (if enabled) |
+| `/servo` | Servo range, trim, and invert config |
+| `/eyemech` | Live gaze control pad + blink/eyelid controls |
+| `/wifi` | WiFi SSID, password, and TX power settings |
+| `/update` | OTA firmware upload |
+| `/factoryreset` | Wipe flash config and reboot |
+
+### Eye Mechanism Control (`/eyemech`)
+
+Click or drag inside the circle to point the eyes at that position. The dot tracks the current gaze target. Buttons above the pad centre the eyes, trigger a blink, or toggle the eyelids. The Speed slider controls how fast the eyes interpolate to the new position.
+
+![Eye Mechanism Control — gaze pad with Center, Blink, and Close Lids buttons](img/eye_mech_control.png)
+
+### Servo Settings (`/servo`)
+
+The top section provides real-time PWM sliders for each of the 6 servo channels — useful for finding the correct min/max travel for your physical mechanism. The configuration table below lets you set the Min pulse, Max pulse, Trim (midpoint), and Invert flag per channel; changes are saved to flash on **Save Config**.
+
+![Servo Controls — live sliders and per-channel min/max/trim/invert configuration table](img/servo_settings.png)
+
+### WiFi Settings (`/wifi`)
+
+Enter the SSID and WPA2 password of your local network and choose a TX power level, then press **Connect**. On first boot the device creates its own access point (`192.168.4.1`) so you can reach this page without a pre-existing network.
+
+![WiFi Settings — SSID, password, and TX power configuration](img/wifi_settings.png)
