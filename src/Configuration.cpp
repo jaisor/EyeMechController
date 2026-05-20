@@ -106,6 +106,7 @@ void EEPROM_loadConfig() {
     for (int i = 0; i < 6; i++) {
       configuration.eyeServoRangeMin[i] = SERVO_PULSE_MIN; // (~0°)
       configuration.eyeServoRangeMax[i] = SERVO_PULSE_MAX; // (~180°)
+      configuration.eyeServoTrim[i]     = (SERVO_PULSE_MIN + SERVO_PULSE_MAX) / 2;
     }
     configuration.servoInvertedMask = 0;
   }

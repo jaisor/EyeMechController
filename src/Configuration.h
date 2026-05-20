@@ -152,6 +152,9 @@ struct configuration_t {
     //            EYE_LEFT_LR(3),  EYE_LEFT_UD(4),  EYE_LEFT_LID(5)
     uint16_t eyeServoRangeMin[6];
     uint16_t eyeServoRangeMax[6];
+    // Midpoint trim per channel: actual PWM pulse sent when the servo is commanded to centre.
+    // Defaults to (min+max)/2. Must stay within [eyeServoRangeMin, eyeServoRangeMax].
+    uint16_t eyeServoTrim[6];
 
     // Servo inversion bitmask: bit N set means channel N PWM is inverted (PULSE_MIN + PULSE_MAX - pulse)
     uint8_t servoInvertedMask;

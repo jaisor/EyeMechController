@@ -21,8 +21,9 @@
 // Eyelid servo range (degrees) – adjust independently of gaze servos
 #define EYE_LID_SERVO_MAX   22
 
-// Blink timing (ms): how long lids stay closed before re-opening
-#define EYE_BLINK_CLOSE_MS  200
+// Blink timing (ms)
+#define EYE_BLINK_CLOSE_MS  200   // how long lids stay closed before hold
+#define EYE_BLINK_HOLD_MS    80   // pause at fully-closed position
 
 // Smooth movement: interval (ms) between each interpolation step
 #define EYE_MOVE_STEP_INTERVAL_MS  10
@@ -70,7 +71,7 @@ private:
     unsigned long _moveStepMs;     // timestamp of last movement step
 
     // Non-blocking blink state machine
-    enum BlinkState : uint8_t { BLINK_IDLE, BLINK_CLOSING };
+    enum BlinkState : uint8_t { BLINK_IDLE, BLINK_CLOSING, BLINK_CLOSED };
     BlinkState      _blinkState;
     unsigned long   _blinkPhaseMs;
 };

@@ -243,42 +243,49 @@ const char htmlServo[] PROGMEM = R"=====(
             <span><small><b>Servo</b></small></span>
             <span><small><b>Min pulse</b></small></span>
             <span><small><b>Max pulse</b></small></span>
+            <span><small><b>Trim (mid)</b></small></span>
             <span><small><b>Invert</b></small></span>
           </div>
           <div class='grid'>
             <span>Servo 0</span>
             <input type='number' name='eyeServoMin_0' min='150' max='600' value='%u'>
             <input type='number' name='eyeServoMax_0' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoTrim_0' min='150' max='600' value='%u'>
             <label><input type='checkbox' name='servoInvert_0' %s></label>
           </div>
           <div class='grid'>
             <span>Servo 1</span>
             <input type='number' name='eyeServoMin_1' min='150' max='600' value='%u'>
             <input type='number' name='eyeServoMax_1' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoTrim_1' min='150' max='600' value='%u'>
             <label><input type='checkbox' name='servoInvert_1' %s></label>
           </div>
           <div class='grid'>
             <span>Servo 2</span>
             <input type='number' name='eyeServoMin_2' min='150' max='600' value='%u'>
             <input type='number' name='eyeServoMax_2' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoTrim_2' min='150' max='600' value='%u'>
             <label><input type='checkbox' name='servoInvert_2' %s></label>
           </div>
           <div class='grid'>
             <span>Servo 3</span>
             <input type='number' name='eyeServoMin_3' min='150' max='600' value='%u'>
             <input type='number' name='eyeServoMax_3' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoTrim_3' min='150' max='600' value='%u'>
             <label><input type='checkbox' name='servoInvert_3' %s></label>
           </div>
           <div class='grid'>
             <span>Servo 4</span>
             <input type='number' name='eyeServoMin_4' min='150' max='600' value='%u'>
             <input type='number' name='eyeServoMax_4' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoTrim_4' min='150' max='600' value='%u'>
             <label><input type='checkbox' name='servoInvert_4' %s></label>
           </div>
           <div class='grid'>
             <span>Servo 5</span>
             <input type='number' name='eyeServoMin_5' min='150' max='600' value='%u'>
             <input type='number' name='eyeServoMax_5' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoTrim_5' min='150' max='600' value='%u'>
             <label><input type='checkbox' name='servoInvert_5' %s></label>
           </div>
         </fieldset>

@@ -35,18 +35,41 @@ void CServoManager::setPulse(uint8_t channel, uint16_t pulse) {
         Log.warningln("[ServoManager] setPulse: channel %d out of range (max %d)", channel, SERVO_COUNT - 1);
         return;
     }
-    uint16_t lo = configuration.eyeServoRangeMin[channel];
-    uint16_t hi = configuration.eyeServoRangeMax[channel];
+    uint16_t lo   = configuration.eyeServoRangeMin[channel];
+    uint16_t hi   = configuration.eyeServoRangeMax[channel];
+    uint16_t trim = configuration.eyeServoTrim[channel];
+
+    // Sanitise trim: must lie in [lo, hi]; fall back to natural midpoint if invalid
+    if (trim < lo || trim > hi) trim = lo + (hi - lo) / 2;
+
     if (pulse < lo) pulse = lo;
     if (pulse > hi) pulse = hi;
 
-    if (configuration.servoInvertedMask & (1u << channel)) {
-        pulse = lo + hi - pulse;
+    // Two-piece linear mapping so that the midpoint (lo+hi)/2 maps to trim.
+    // This centres the servo at the trimmed position without clipping the full range.
+    uint16_t mid = lo + (hi - lo) / 2;
+    uint16_t out;
+    if (hi == lo) {
+        out = lo;
+    } else if (pulse <= mid) {
+        // Map [lo, mid] → [lo, trim]
+        out = (mid > lo)
+            ? (uint16_t)(lo + (uint32_t)(pulse - lo) * (trim - lo) / (mid - lo))
+            : lo;
+    } else {
+        // Map (mid, hi] → (trim, hi]
+        out = (hi > mid)
+            ? (uint16_t)(trim + (uint32_t)(pulse - mid) * (hi - trim) / (hi - mid))
+            : hi;
     }
 
-    pulses[channel] = pulse;
-    pwm.setPWM(channel, 0, pulse);
-    Log.verboseln("[ServoManager] ch%d → pulse=%d", channel, pulse);
+    if (configuration.servoInvertedMask & (1u << channel)) {
+        out = lo + hi - out;
+    }
+
+    pulses[channel] = out;
+    pwm.setPWM(channel, 0, out);
+    Log.verboseln("[ServoManager] ch%d → pulse=%d (trim=%d)", channel, out, trim);
 }
 
 uint16_t CServoManager::getPulse(uint8_t channel) const {

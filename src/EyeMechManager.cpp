@@ -28,10 +28,17 @@ void CEyeMechManager::loop() {
     // --- Blink state machine ---
     if (_blinkState == BLINK_CLOSING) {
         if (millis() - _blinkPhaseMs >= EYE_BLINK_CLOSE_MS) {
+            // Lids have been closed long enough – enter the hold pause
+            _blinkState   = BLINK_CLOSED;
+            _blinkPhaseMs = millis();
+        }
+    } else if (_blinkState == BLINK_CLOSED) {
+        if (millis() - _blinkPhaseMs >= EYE_BLINK_HOLD_MS) {
+            // Hold over – reopen
             _servo->setPulse(EYE_RIGHT_LID, mapServo(_eyelidOpen, EYE_RIGHT_LID));
-            _servo->setPulse(EYE_LEFT_LID, mapServo(_eyelidOpen, EYE_LEFT_LID));
+            _servo->setPulse(EYE_LEFT_LID,  mapServo(_eyelidOpen, EYE_LEFT_LID));
             _blinkState = BLINK_IDLE;
-            Log.verboseln("[EyeMechManager] Blink complete=%u, %u");
+            Log.verboseln("[EyeMechManager] Blink complete");
         }
     }
 
@@ -75,13 +82,13 @@ void CEyeMechManager::lookAt(float x, float y) {
 }
 
 void CEyeMechManager::setRightEye(float x, float y) {
-    _servo->setPulse(EYE_RIGHT_LR, mapServo(100.0f - x, EYE_RIGHT_LR));  // x→LR (inverted)
-    _servo->setPulse(EYE_RIGHT_UD, mapServo(100.0f - y, EYE_RIGHT_UD));  // y→UD (inverted)
+    _servo->setPulse(EYE_RIGHT_LR, mapServo(x,           EYE_RIGHT_LR));  // x→LR
+    _servo->setPulse(EYE_RIGHT_UD, mapServo(100.0f - y,  EYE_RIGHT_UD));  // y→UD (inverted)
 }
 
 void CEyeMechManager::setLeftEye(float x, float y) {
-    _servo->setPulse(EYE_LEFT_LR, mapServo(100.0f - x, EYE_LEFT_LR));   // x→LR (inverted)
-    _servo->setPulse(EYE_LEFT_UD, mapServo(100.0f - y, EYE_LEFT_UD));   // y→UD (inverted)
+    _servo->setPulse(EYE_LEFT_LR, mapServo(x,           EYE_LEFT_LR));   // x→LR
+    _servo->setPulse(EYE_LEFT_UD, mapServo(100.0f - y,  EYE_LEFT_UD));   // y→UD (inverted)
 }
 
 // ---------------------------------------------------------------------------
