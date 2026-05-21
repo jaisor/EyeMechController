@@ -7,6 +7,7 @@
 
 #define WIFI        // 2.4Ghz wifi access point
 #define LED         // Individually addressible LED strip
+#define JOYSTICK    // Joystick with two axes + switch (active LOW)
 //#define OLED        // OLED display
 //#define BUTTONS     // Buttons
 
@@ -74,7 +75,9 @@
 
 #ifdef LED
     #define LED_CHANGE_MODE_SEC   0
-    #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
+    #if defined(CONFIG_IDF_TARGET_ESP32C3)
+      #define LED_PIN GPIO_NUM_10
+    #elif defined(CONFIG_IDF_TARGET_ESP32S3)
       #define LED_PIN GPIO_NUM_2
     #elif defined(SEEED_XIAO_M0)
       #define LED_PIN 10
@@ -100,6 +103,47 @@
 #ifdef BUTTONS
   #define BUTTON_1_PIN     GPIO_NUM_0
   #define BUTTON_2_PIN     GPIO_NUM_1
+#endif
+
+// Joystick: two analog potentiometers (X/Y axes) + one digital switch
+// Uses ADC1 pins only (ADC2 conflicts with WiFi on ESP32 variants).
+// Switch uses INPUT_PULLUP; reading is active LOW (pressed = true).
+//#define JOYSTICK
+#ifdef JOYSTICK
+  #if defined(CONFIG_IDF_TARGET_ESP32C3)
+    // ADC1 CH3/CH4 (GPIO3/4) for axes; SW on GPIO5 (digital-only, no ADC1) to avoid
+    // ADC crosstalk — GPIO2/3/4 share the ADC1 mux, so a switch on GPIO2 caused
+    // spurious axis readings when pressed. GPIO5 has no ADC1 connection.
+    #define JOY_X_PIN   GPIO_NUM_3
+    #define JOY_Y_PIN   GPIO_NUM_4
+    #define JOY_SW_PIN  GPIO_NUM_5
+  #elif defined(CONFIG_IDF_TARGET_ESP32S3)
+    // ADC1 CH3/CH6 are free on S3 when I2C is on GPIO5/6 and LED on GPIO2
+    #define JOY_X_PIN   GPIO_NUM_4
+    #define JOY_Y_PIN   GPIO_NUM_7
+    #define JOY_SW_PIN  GPIO_NUM_8
+  #elif defined(CONFIG_IDF_TARGET_ESP32)
+    // GPIO34/35 are input-only ADC1 pins safe to use alongside WiFi
+    #define JOY_X_PIN   GPIO_NUM_34
+    #define JOY_Y_PIN   GPIO_NUM_35
+    #define JOY_SW_PIN  GPIO_NUM_32
+  #elif defined(ESP8266)
+    // ESP8266 has a single 10-bit ADC (A0); Y axis cannot be read independently
+    #define JOY_X_PIN   A0
+    #define JOY_Y_PIN   A0
+    #define JOY_SW_PIN  D5
+  #else
+    #define JOY_X_PIN   34
+    #define JOY_Y_PIN   35
+    #define JOY_SW_PIN  32
+  #endif
+  #define JOY_READ_INTERVAL_MS  20   // Poll joystick every 20 ms (~50 Hz)
+  // Max raw ADC value: ESP8266 = 10-bit (1023), ESP32 variants = 12-bit (4095)
+  #ifdef ESP8266
+    #define JOY_ADC_MAX  1023
+  #else
+    #define JOY_ADC_MAX  4095
+  #endif
 #endif
 
 #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
@@ -158,6 +202,11 @@ struct configuration_t {
 
     // Servo inversion bitmask: bit N set means channel N PWM is inverted (PULSE_MIN + PULSE_MAX - pulse)
     uint8_t servoInvertedMask;
+
+    #ifdef JOYSTICK
+    // 1 = joystick X/Y drives eye gaze and button closes eyelids; 0 = joystick read-only
+    uint8_t joystickEyeControl;
+    #endif
 
     char _loaded[7]; // used to check if EEPROM was correctly set    
 };

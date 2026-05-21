@@ -69,7 +69,7 @@ void CServoManager::setPulse(uint8_t channel, uint16_t pulse) {
 
     pulses[channel] = out;
     pwm.setPWM(channel, 0, out);
-    Log.verboseln("[ServoManager] ch%d → pulse=%d (trim=%d)", channel, out, trim);
+    //Log.verboseln("[ServoManager] ch%d → pulse=%d (trim=%d)", channel, out, trim);
 }
 
 uint16_t CServoManager::getPulse(uint8_t channel) const {

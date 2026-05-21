@@ -239,6 +239,9 @@ void CWifiManager::listen() {
   });
   server->addHandler(configHandler);
   
+  server->on("/api/device", HTTP_GET, [this](AsyncWebServerRequest *request) {
+    handleRestAPI_Device(request);
+  });
   server->on("/api", HTTP_GET, [this](AsyncWebServerRequest *request) {
     handleRestAPI_LED(request);
   });
@@ -586,6 +589,10 @@ void CWifiManager::handleDevice(AsyncWebServerRequest *request) {
   if (request->method() == HTTP_POST) {
     configuration.ledEnabled = request->hasArg("ledEnabled");
 
+    #ifdef JOYSTICK
+    configuration.joystickEyeControl = request->hasArg("joystickEyeControl") ? 1 : 0;
+    #endif
+
     String deviceName = request->arg("deviceName");
     deviceName.toCharArray(configuration.name, sizeof(configuration.name));
     Log.infoln("Device req name: %s", deviceName);
@@ -623,12 +630,45 @@ void CWifiManager::handleDevice(AsyncWebServerRequest *request) {
       tzOptions += "</option>";
     }
 
-    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 6144);
+    // Build the optional joystick fieldset (inside the form) for the 4th printf arg
+    String joystickFieldset;
+    #ifdef JOYSTICK
+    joystickFieldset  = "<fieldset><legend>Joystick</legend>";
+    joystickFieldset += "<label>Control eye movement";
+    joystickFieldset += "<input name='joystickEyeControl' type='checkbox' role='switch' ";
+    joystickFieldset += configuration.joystickEyeControl ? "checked" : "";
+    joystickFieldset += "/><br/><sub><small>Use joystick X/Y to move eyes; button closes eyelids</small></sub></label>";
+    joystickFieldset += "</fieldset>";
+    #endif
+
+    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 7168);
     printHTMLTop(response);
     response->printf_P(htmlDevice,
       configuration.ledEnabled ? "checked" : "",
       configuration.name,
-      tzOptions.c_str());
+      tzOptions.c_str(),
+      joystickFieldset.c_str());
+
+    // Live joystick status panel (outside the form, always visible when JOYSTICK is defined)
+    #ifdef JOYSTICK
+    response->print(F(
+      "<fieldset><legend>Joystick Status (live)</legend>"
+      "<div class='grid'>"
+        "<span>X &nbsp;<b id='joyX'>-</b></span>"
+        "<span>Y &nbsp;<b id='joyY'>-</b></span>"
+        "<span>SW &nbsp;<b id='joySW'>-</b></span>"
+      "</div>"
+      "<script>(function poll(){"
+        "fetch('/api/device').then(function(r){return r.json();}).then(function(d){"
+          "var x=d.joyX,y=d.joyY,s=d.joySwitch;"
+          "document.getElementById('joyX').textContent=x!==undefined?x:'N/A';"
+          "document.getElementById('joyY').textContent=y!==undefined?y:'N/A';"
+          "document.getElementById('joySW').textContent=s!==undefined?(s?'PRESSED':'released'):'N/A';"
+        "}).catch(function(){});setTimeout(poll,200);"
+      "})();</script>"
+      "</fieldset>"));
+    #endif
+
     printHTMLBottom(response);
     request->send(response);
   }
@@ -801,7 +841,15 @@ void CWifiManager::handleRestAPI_Device(AsyncWebServerRequest *request) {
   char buf[sizeof "2011-10-08T07:07:09Z"];
   strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
   deviceJson["timestamp_iso8601"] = String(buf);
- 
+
+  #ifdef JOYSTICK
+  if (device) {
+    deviceJson["joyX"]      = device->getJoystickX();
+    deviceJson["joyY"]      = device->getJoystickY();
+    deviceJson["joySwitch"] = device->getJoystickSwitch();
+  }
+  #endif
+
   String jsonStr;
   serializeJson(deviceJson, jsonStr);
   Log.verboseln("deviceSettings: '%s'", jsonStr.c_str());
@@ -833,6 +881,10 @@ void CWifiManager::handleRestAPI_Config(AsyncWebServerRequest *request) {
   configJson["ntpServer"] = configuration.ntpServer;
   configJson["gmtOffset_sec"] = configuration.gmtOffset_sec;
   configJson["daylightOffset_sec"] = configuration.daylightOffset_sec;
+  #endif
+
+  #ifdef JOYSTICK
+  configJson["joystickEyeControl"] = (bool)configuration.joystickEyeControl;
   #endif
 
   #ifdef LED
@@ -1146,6 +1198,13 @@ bool CWifiManager::updateConfigFromJson(JsonDocument jsonObj) {
 
   // Update LED brightness calculation if power-save settings changed
   CONFIG_getLedBrightness(true);
+  #endif
+
+  #ifdef JOYSTICK
+  if (!jsonObj["joystickEyeControl"].isNull()) {
+    configuration.joystickEyeControl = jsonObj["joystickEyeControl"].as<bool>() ? 1 : 0;
+    Log.traceln("Setting 'joystickEyeControl' to %d", configuration.joystickEyeControl);
+  }
   #endif
 
   return true;

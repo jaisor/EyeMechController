@@ -196,6 +196,7 @@ const char htmlDevice[] PROGMEM = R"=====(
             </select>
           </label>
         </fieldset>
+        %s
         <button type='submit' value='Submit'>Submit...</button>
       </form>
 )=====";

@@ -109,6 +109,9 @@ void EEPROM_loadConfig() {
       configuration.eyeServoTrim[i]     = (SERVO_PULSE_MIN + SERVO_PULSE_MAX) / 2;
     }
     configuration.servoInvertedMask = 0;
+    #ifdef JOYSTICK
+    configuration.joystickEyeControl = 1;  // Default: enabled
+    #endif
   }
 
 #ifdef LED
@@ -162,6 +165,12 @@ void EEPROM_loadConfig() {
       strcpy(configuration.wifiSsid, "");
       break;
     }
+  }
+#endif
+
+#ifdef JOYSTICK
+  if (configuration.joystickEyeControl > 1) {
+    configuration.joystickEyeControl = 1;  // Clamp uninitialized EEPROM garbage to valid value
   }
 #endif
 

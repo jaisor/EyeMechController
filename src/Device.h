@@ -35,6 +35,14 @@ public:
   CServoManager* getServoManager() { return &servoManager; }
   CEyeMechManager* getEyeMechManager() { return &eyeMechManager; }
 
+  #ifdef JOYSTICK
+  // Raw ADC readings: 0-4095 on ESP32 variants, 0-1023 on ESP8266.
+  // Switch is active LOW (INPUT_PULLUP); pressed = true.
+  uint16_t getJoystickX()      const { return joyX; }
+  uint16_t getJoystickY()      const { return joyY; }
+  bool     getJoystickSwitch() const { return joySwitch; }
+  #endif
+
   // Set WiFi info for OLED display (call before setState)
   void setWifiAPInfo(const char* ssid, const char* password, const char* ip);
   void setWifiConnectedInfo(const char* ip);
@@ -53,6 +61,14 @@ private:
   unsigned long minDelayMs;
   CServoManager servoManager;
   CEyeMechManager eyeMechManager;
+
+  #ifdef JOYSTICK
+  uint16_t      joyX;
+  uint16_t      joyY;
+  bool          joySwitch;
+  bool          joyPrevSwitch;
+  unsigned long joyLastRead;
+  #endif
 
   #ifdef OLED
     unsigned long tMillisDisplayToggle;

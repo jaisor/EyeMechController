@@ -100,6 +100,16 @@ CDevice::CDevice()
   Log.infoln(F("Device initialized"));
   servoManager.setup();
   eyeMechManager.setup();
+
+  #ifdef JOYSTICK
+  joyX         = 0;
+  joyY         = 0;
+  joySwitch    = false;
+  joyPrevSwitch = false;
+  joyLastRead  = 0;
+  pinMode(JOY_SW_PIN, INPUT_PULLUP);
+  Log.infoln(F("Joystick initialized – X:GPIO%d  Y:GPIO%d  SW:GPIO%d"), JOY_X_PIN, JOY_Y_PIN, JOY_SW_PIN);
+  #endif
 }
 
 void CDevice::setState(DeviceState state) {
@@ -156,6 +166,34 @@ CDevice::~CDevice() {
 void CDevice::loop() {
   servoManager.loop();
   eyeMechManager.loop();
+
+  #ifdef JOYSTICK
+  {
+    unsigned long now = millis();
+    if (now - joyLastRead >= JOY_READ_INTERVAL_MS) {
+      joyX      = static_cast<uint16_t>(analogRead(JOY_X_PIN));
+      joyY      = static_cast<uint16_t>(analogRead(JOY_Y_PIN));
+      joySwitch = !digitalRead(JOY_SW_PIN); // INPUT_PULLUP → pressed = LOW → true
+      joyLastRead = now;
+
+      // Map raw ADC [0, JOY_ADC_MAX] to eye position [0.0, 100.0]
+      float eyeX = joyX * 100.0f / JOY_ADC_MAX;
+      float eyeY = joyY * 100.0f / JOY_ADC_MAX;
+
+      if (configuration.joystickEyeControl) {
+        eyeMechManager.lookAt(eyeX, eyeY);
+      }
+
+      // Button: close eyelids while held, reopen on release (track edge regardless of enable state)
+      if (joySwitch != joyPrevSwitch) {
+        if (configuration.joystickEyeControl) {
+          eyeMechManager.setEyelids(joySwitch ? 0 : 100);
+        }
+        joyPrevSwitch = joySwitch;
+      }
+    }
+  }
+  #endif
   #ifdef OLED
   #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
 
