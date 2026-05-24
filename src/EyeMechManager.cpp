@@ -82,13 +82,17 @@ void CEyeMechManager::lookAt(float x, float y) {
 }
 
 void CEyeMechManager::setRightEye(float x, float y) {
-    _servo->setPulse(EYE_RIGHT_LR, mapServo(x,           EYE_RIGHT_LR));  // x→LR
-    _servo->setPulse(EYE_RIGHT_UD, mapServo(100.0f - y,  EYE_RIGHT_UD));  // y→UD (inverted)
+    uint16_t lrPulse, udPulse;
+    correctedGaze(x, y, lrPulse, udPulse);
+    _servo->setPulse(EYE_RIGHT_LR, lrPulse);
+    _servo->setPulse(EYE_RIGHT_UD, udPulse);
 }
 
 void CEyeMechManager::setLeftEye(float x, float y) {
-    _servo->setPulse(EYE_LEFT_LR, mapServo(x,           EYE_LEFT_LR));   // x→LR
-    _servo->setPulse(EYE_LEFT_UD, mapServo(100.0f - y,  EYE_LEFT_UD));   // y→UD (inverted)
+    uint16_t lrPulse, udPulse;
+    correctedGazeLeft(x, y, lrPulse, udPulse);
+    _servo->setPulse(EYE_LEFT_LR, lrPulse);
+    _servo->setPulse(EYE_LEFT_UD, udPulse);
 }
 
 // ---------------------------------------------------------------------------
@@ -129,4 +133,59 @@ uint16_t CEyeMechManager::mapServo(float value, uint8_t channel) const {
     uint16_t hi = configuration.eyeServoRangeMax[channel];
     if (hi < lo) hi = lo;
     return (uint16_t)(lo + (float)(hi - lo) * value / 100.0f);
+}
+
+void CEyeMechManager::correctedGaze(float x, float y, uint16_t& lrPulse, uint16_t& udPulse) const {
+    // Map x [0,100] → col [0,2], y [100→0] → row [0,2] (row 0 = top = y=100)
+    float col_f = x / 50.0f;
+    float row_f = (100.0f - y) / 50.0f;
+    if (col_f < 0.0f) col_f = 0.0f; else if (col_f > 2.0f) col_f = 2.0f;
+    if (row_f < 0.0f) row_f = 0.0f; else if (row_f > 2.0f) row_f = 2.0f;
+
+    uint8_t col0 = (uint8_t)col_f; if (col0 > 1) col0 = 1;
+    uint8_t row0 = (uint8_t)row_f; if (row0 > 1) row0 = 1;
+    uint8_t col1 = col0 + 1;
+    uint8_t row1 = row0 + 1;
+    float tx = col_f - (float)col0;
+    float ty = row_f - (float)row0;
+
+    for (uint8_t axis = 0; axis < 2; axis++) {
+        float v00 = configuration.eyeCorrMatrixR[row0 * 3 + col0][axis];
+        float v10 = configuration.eyeCorrMatrixR[row0 * 3 + col1][axis];
+        float v01 = configuration.eyeCorrMatrixR[row1 * 3 + col0][axis];
+        float v11 = configuration.eyeCorrMatrixR[row1 * 3 + col1][axis];
+        float result = (1.0f - tx) * (1.0f - ty) * v00
+                     +         tx  * (1.0f - ty) * v10
+                     + (1.0f - tx) *          ty  * v01
+                     +         tx  *          ty  * v11;
+        if (axis == 0) lrPulse = (uint16_t)result;
+        else           udPulse = (uint16_t)result;
+    }
+}
+
+void CEyeMechManager::correctedGazeLeft(float x, float y, uint16_t& lrPulse, uint16_t& udPulse) const {
+    float col_f = x / 50.0f;
+    float row_f = (100.0f - y) / 50.0f;
+    if (col_f < 0.0f) col_f = 0.0f; else if (col_f > 2.0f) col_f = 2.0f;
+    if (row_f < 0.0f) row_f = 0.0f; else if (row_f > 2.0f) row_f = 2.0f;
+
+    uint8_t col0 = (uint8_t)col_f; if (col0 > 1) col0 = 1;
+    uint8_t row0 = (uint8_t)row_f; if (row0 > 1) row0 = 1;
+    uint8_t col1 = col0 + 1;
+    uint8_t row1 = row0 + 1;
+    float tx = col_f - (float)col0;
+    float ty = row_f - (float)row0;
+
+    for (uint8_t axis = 0; axis < 2; axis++) {
+        float v00 = configuration.eyeCorrMatrixL[row0 * 3 + col0][axis];
+        float v10 = configuration.eyeCorrMatrixL[row0 * 3 + col1][axis];
+        float v01 = configuration.eyeCorrMatrixL[row1 * 3 + col0][axis];
+        float v11 = configuration.eyeCorrMatrixL[row1 * 3 + col1][axis];
+        float result = (1.0f - tx) * (1.0f - ty) * v00
+                     +         tx  * (1.0f - ty) * v10
+                     + (1.0f - tx) *          ty  * v01
+                     +         tx  *          ty  * v11;
+        if (axis == 0) lrPulse = (uint16_t)result;
+        else           udPulse = (uint16_t)result;
+    }
 }

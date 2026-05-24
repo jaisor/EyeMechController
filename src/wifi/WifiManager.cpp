@@ -242,6 +242,17 @@ void CWifiManager::listen() {
   server->on("/api/device", HTTP_GET, [this](AsyncWebServerRequest *request) {
     handleRestAPI_Device(request);
   });
+  AsyncCallbackJsonWebHandler* deviceHandler = new AsyncCallbackJsonWebHandler("/api/device", [this](AsyncWebServerRequest *request, JsonVariant &json) {
+    bool success = this->updateConfigFromJson(json.as<JsonObject>());
+    if (success) {
+      EEPROM_saveConfig();
+    }
+    AsyncResponseStream *response = request->beginResponseStream("application/json; charset=UTF-8", 32);
+    response->print(success ? "{\"success\":true}" : "{\"success\":false}");
+    response->setCode(success ? 200 : 500);
+    request->send(response);
+  });
+  server->addHandler(deviceHandler);
   server->on("/api", HTTP_GET, [this](AsyncWebServerRequest *request) {
     handleRestAPI_LED(request);
   });
@@ -657,13 +668,15 @@ void CWifiManager::handleDevice(AsyncWebServerRequest *request) {
         "<span>X &nbsp;<b id='joyX'>-</b></span>"
         "<span>Y &nbsp;<b id='joyY'>-</b></span>"
         "<span>SW &nbsp;<b id='joySW'>-</b></span>"
+        "<span>State &nbsp;<b id='joySt'>-</b></span>"
       "</div>"
       "<script>(function poll(){"
         "fetch('/api/device').then(function(r){return r.json();}).then(function(d){"
-          "var x=d.joyX,y=d.joyY,s=d.joySwitch;"
+          "var x=d.joyX,y=d.joyY,s=d.joySwitch,p=d.joySuspended;"
           "document.getElementById('joyX').textContent=x!==undefined?x:'N/A';"
           "document.getElementById('joyY').textContent=y!==undefined?y:'N/A';"
           "document.getElementById('joySW').textContent=s!==undefined?(s?'PRESSED':'released'):'N/A';"
+          "document.getElementById('joySt').textContent=p!==undefined?(p?'SUSPENDED':'active'):'N/A';"
         "}).catch(function(){});setTimeout(poll,200);"
       "})();</script>"
       "</fieldset>"));
@@ -690,16 +703,13 @@ void CWifiManager::handleServo(AsyncWebServerRequest *request) {
     } else {
       // Servo config save
       for (uint8_t i = 0; i < 6; i++) {
-        char keyMin[16], keyMax[16], keyTrim[16];
-        snprintf(keyMin,  sizeof(keyMin),  "eyeServoMin_%u",  i);
-        snprintf(keyMax,  sizeof(keyMax),  "eyeServoMax_%u",  i);
-        snprintf(keyTrim, sizeof(keyTrim), "eyeServoTrim_%u", i);
+        char keyMin[16], keyMax[16];
+        snprintf(keyMin, sizeof(keyMin), "eyeServoMin_%u", i);
+        snprintf(keyMax, sizeof(keyMax), "eyeServoMax_%u", i);
         if (request->hasArg(keyMin))
-          configuration.eyeServoRangeMin[i] = (uint16_t)constrain(atoi(request->arg(keyMin).c_str()),  SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+          configuration.eyeServoRangeMin[i] = (uint16_t)constrain(atoi(request->arg(keyMin).c_str()), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
         if (request->hasArg(keyMax))
-          configuration.eyeServoRangeMax[i] = (uint16_t)constrain(atoi(request->arg(keyMax).c_str()),  SERVO_PULSE_MIN, SERVO_PULSE_MAX);
-        if (request->hasArg(keyTrim))
-          configuration.eyeServoTrim[i]     = (uint16_t)constrain(atoi(request->arg(keyTrim).c_str()), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+          configuration.eyeServoRangeMax[i] = (uint16_t)constrain(atoi(request->arg(keyMax).c_str()), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
       }
       uint8_t invertMask = 0;
       for (uint8_t i = 0; i < 6; i++) {
@@ -708,26 +718,66 @@ void CWifiManager::handleServo(AsyncWebServerRequest *request) {
         if (request->hasArg(key)) invertMask |= (1u << i);
       }
       configuration.servoInvertedMask = invertMask;
+      // Correction matrices (right and left eye)
+      for (int row = 0; row < 3; row++) {
+        for (int col = 0; col < 3; col++) {
+          char keyLR[13], keyUD[13];
+          int idx = row * 3 + col;
+          snprintf(keyLR, sizeof(keyLR), "cmR_%d_%d_0", row, col);
+          snprintf(keyUD, sizeof(keyUD), "cmR_%d_%d_1", row, col);
+          if (request->hasArg(keyLR))
+            configuration.eyeCorrMatrixR[idx][0] = (uint16_t)constrain(atoi(request->arg(keyLR).c_str()), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+          if (request->hasArg(keyUD))
+            configuration.eyeCorrMatrixR[idx][1] = (uint16_t)constrain(atoi(request->arg(keyUD).c_str()), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+          snprintf(keyLR, sizeof(keyLR), "cmL_%d_%d_0", row, col);
+          snprintf(keyUD, sizeof(keyUD), "cmL_%d_%d_1", row, col);
+          if (request->hasArg(keyLR))
+            configuration.eyeCorrMatrixL[idx][0] = (uint16_t)constrain(atoi(request->arg(keyLR).c_str()), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+          if (request->hasArg(keyUD))
+            configuration.eyeCorrMatrixL[idx][1] = (uint16_t)constrain(atoi(request->arg(keyUD).c_str()), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+        }
+      }
       EEPROM_saveConfig();
       request->redirect("servo");
     }
   } else {
-    // Slider defaults: use per-channel trim as centre position
-    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 6144);
+    // Slider defaults: use midpoint of min/max as centre position
+    AsyncResponseStream *response = request->beginResponseStream("text/html; charset=UTF-8", 12288);
     printHTMLTop(response);
     response->printf_P(htmlServo,
-      (unsigned)configuration.eyeServoTrim[0], (unsigned)configuration.eyeServoRangeMin[0], (unsigned)configuration.eyeServoRangeMax[0], (unsigned)configuration.eyeServoTrim[0],
-      (unsigned)configuration.eyeServoTrim[1], (unsigned)configuration.eyeServoRangeMin[1], (unsigned)configuration.eyeServoRangeMax[1], (unsigned)configuration.eyeServoTrim[1],
-      (unsigned)configuration.eyeServoTrim[2], (unsigned)configuration.eyeServoRangeMin[2], (unsigned)configuration.eyeServoRangeMax[2], (unsigned)configuration.eyeServoTrim[2],
-      (unsigned)configuration.eyeServoTrim[3], (unsigned)configuration.eyeServoRangeMin[3], (unsigned)configuration.eyeServoRangeMax[3], (unsigned)configuration.eyeServoTrim[3],
-      (unsigned)configuration.eyeServoTrim[4], (unsigned)configuration.eyeServoRangeMin[4], (unsigned)configuration.eyeServoRangeMax[4], (unsigned)configuration.eyeServoTrim[4],
-      (unsigned)configuration.eyeServoTrim[5], (unsigned)configuration.eyeServoRangeMin[5], (unsigned)configuration.eyeServoRangeMax[5], (unsigned)configuration.eyeServoTrim[5],
-      (unsigned)configuration.eyeServoRangeMin[0], (unsigned)configuration.eyeServoRangeMax[0], (unsigned)configuration.eyeServoTrim[0], (configuration.servoInvertedMask & (1u<<0)) ? "checked" : "",
-      (unsigned)configuration.eyeServoRangeMin[1], (unsigned)configuration.eyeServoRangeMax[1], (unsigned)configuration.eyeServoTrim[1], (configuration.servoInvertedMask & (1u<<1)) ? "checked" : "",
-      (unsigned)configuration.eyeServoRangeMin[2], (unsigned)configuration.eyeServoRangeMax[2], (unsigned)configuration.eyeServoTrim[2], (configuration.servoInvertedMask & (1u<<2)) ? "checked" : "",
-      (unsigned)configuration.eyeServoRangeMin[3], (unsigned)configuration.eyeServoRangeMax[3], (unsigned)configuration.eyeServoTrim[3], (configuration.servoInvertedMask & (1u<<3)) ? "checked" : "",
-      (unsigned)configuration.eyeServoRangeMin[4], (unsigned)configuration.eyeServoRangeMax[4], (unsigned)configuration.eyeServoTrim[4], (configuration.servoInvertedMask & (1u<<4)) ? "checked" : "",
-      (unsigned)configuration.eyeServoRangeMin[5], (unsigned)configuration.eyeServoRangeMax[5], (unsigned)configuration.eyeServoTrim[5], (configuration.servoInvertedMask & (1u<<5)) ? "checked" : "");
+      (unsigned)((configuration.eyeServoRangeMin[0]+configuration.eyeServoRangeMax[0])/2), (unsigned)configuration.eyeServoRangeMin[0], (unsigned)configuration.eyeServoRangeMax[0], (unsigned)((configuration.eyeServoRangeMin[0]+configuration.eyeServoRangeMax[0])/2),
+      (unsigned)((configuration.eyeServoRangeMin[1]+configuration.eyeServoRangeMax[1])/2), (unsigned)configuration.eyeServoRangeMin[1], (unsigned)configuration.eyeServoRangeMax[1], (unsigned)((configuration.eyeServoRangeMin[1]+configuration.eyeServoRangeMax[1])/2),
+      (unsigned)((configuration.eyeServoRangeMin[2]+configuration.eyeServoRangeMax[2])/2), (unsigned)configuration.eyeServoRangeMin[2], (unsigned)configuration.eyeServoRangeMax[2], (unsigned)((configuration.eyeServoRangeMin[2]+configuration.eyeServoRangeMax[2])/2),
+      (unsigned)((configuration.eyeServoRangeMin[3]+configuration.eyeServoRangeMax[3])/2), (unsigned)configuration.eyeServoRangeMin[3], (unsigned)configuration.eyeServoRangeMax[3], (unsigned)((configuration.eyeServoRangeMin[3]+configuration.eyeServoRangeMax[3])/2),
+      (unsigned)((configuration.eyeServoRangeMin[4]+configuration.eyeServoRangeMax[4])/2), (unsigned)configuration.eyeServoRangeMin[4], (unsigned)configuration.eyeServoRangeMax[4], (unsigned)((configuration.eyeServoRangeMin[4]+configuration.eyeServoRangeMax[4])/2),
+      (unsigned)((configuration.eyeServoRangeMin[5]+configuration.eyeServoRangeMax[5])/2), (unsigned)configuration.eyeServoRangeMin[5], (unsigned)configuration.eyeServoRangeMax[5], (unsigned)((configuration.eyeServoRangeMin[5]+configuration.eyeServoRangeMax[5])/2),
+      (unsigned)configuration.eyeServoRangeMin[0], (unsigned)configuration.eyeServoRangeMax[0], (configuration.servoInvertedMask & (1u<<0)) ? "checked" : "",
+      (unsigned)configuration.eyeServoRangeMin[1], (unsigned)configuration.eyeServoRangeMax[1], (configuration.servoInvertedMask & (1u<<1)) ? "checked" : "",
+      (unsigned)configuration.eyeServoRangeMin[2], (unsigned)configuration.eyeServoRangeMax[2], (configuration.servoInvertedMask & (1u<<2)) ? "checked" : "",
+      (unsigned)configuration.eyeServoRangeMin[3], (unsigned)configuration.eyeServoRangeMax[3], (configuration.servoInvertedMask & (1u<<3)) ? "checked" : "",
+      (unsigned)configuration.eyeServoRangeMin[4], (unsigned)configuration.eyeServoRangeMax[4], (configuration.servoInvertedMask & (1u<<4)) ? "checked" : "",
+      (unsigned)configuration.eyeServoRangeMin[5], (unsigned)configuration.eyeServoRangeMax[5], (configuration.servoInvertedMask & (1u<<5)) ? "checked" : "");
+    response->printf_P(htmlCorrMatrix,
+      // Right eye
+      (unsigned)configuration.eyeCorrMatrixR[0][0], (unsigned)configuration.eyeCorrMatrixR[0][1],
+      (unsigned)configuration.eyeCorrMatrixR[1][0], (unsigned)configuration.eyeCorrMatrixR[1][1],
+      (unsigned)configuration.eyeCorrMatrixR[2][0], (unsigned)configuration.eyeCorrMatrixR[2][1],
+      (unsigned)configuration.eyeCorrMatrixR[3][0], (unsigned)configuration.eyeCorrMatrixR[3][1],
+      (unsigned)configuration.eyeCorrMatrixR[4][0], (unsigned)configuration.eyeCorrMatrixR[4][1],
+      (unsigned)configuration.eyeCorrMatrixR[5][0], (unsigned)configuration.eyeCorrMatrixR[5][1],
+      (unsigned)configuration.eyeCorrMatrixR[6][0], (unsigned)configuration.eyeCorrMatrixR[6][1],
+      (unsigned)configuration.eyeCorrMatrixR[7][0], (unsigned)configuration.eyeCorrMatrixR[7][1],
+      (unsigned)configuration.eyeCorrMatrixR[8][0], (unsigned)configuration.eyeCorrMatrixR[8][1],
+      // Left eye
+      (unsigned)configuration.eyeCorrMatrixL[0][0], (unsigned)configuration.eyeCorrMatrixL[0][1],
+      (unsigned)configuration.eyeCorrMatrixL[1][0], (unsigned)configuration.eyeCorrMatrixL[1][1],
+      (unsigned)configuration.eyeCorrMatrixL[2][0], (unsigned)configuration.eyeCorrMatrixL[2][1],
+      (unsigned)configuration.eyeCorrMatrixL[3][0], (unsigned)configuration.eyeCorrMatrixL[3][1],
+      (unsigned)configuration.eyeCorrMatrixL[4][0], (unsigned)configuration.eyeCorrMatrixL[4][1],
+      (unsigned)configuration.eyeCorrMatrixL[5][0], (unsigned)configuration.eyeCorrMatrixL[5][1],
+      (unsigned)configuration.eyeCorrMatrixL[6][0], (unsigned)configuration.eyeCorrMatrixL[6][1],
+      (unsigned)configuration.eyeCorrMatrixL[7][0], (unsigned)configuration.eyeCorrMatrixL[7][1],
+      (unsigned)configuration.eyeCorrMatrixL[8][0], (unsigned)configuration.eyeCorrMatrixL[8][1]);
     printHTMLBottom(response);
     request->send(response);
   }
@@ -736,7 +786,7 @@ void CWifiManager::handleServo(AsyncWebServerRequest *request) {
 }
 
 void CWifiManager::handleEyeMech(AsyncWebServerRequest *request) {
-  Log.traceln("handleEyeMech: %s", request->methodToString());
+  //Log.traceln("handleEyeMech: %s", request->methodToString());
   intLEDOn();
 
   if (request->method() == HTTP_POST) {
@@ -750,7 +800,7 @@ void CWifiManager::handleEyeMech(AsyncWebServerRequest *request) {
           device->getEyeMechManager()->setSpeed(spd);
         }
         device->getEyeMechManager()->lookAt(x, y);
-        Log.noticeln("EyeMech lookAt(%d, %d)", x, y);
+        //Log.noticeln("EyeMech lookAt(%d, %d)", x, y);
       } else if (action == "blink") {
         device->getEyeMechManager()->blink();
         Log.noticeln("EyeMech blink");
@@ -844,11 +894,33 @@ void CWifiManager::handleRestAPI_Device(AsyncWebServerRequest *request) {
 
   #ifdef JOYSTICK
   if (device) {
-    deviceJson["joyX"]      = device->getJoystickX();
-    deviceJson["joyY"]      = device->getJoystickY();
-    deviceJson["joySwitch"] = device->getJoystickSwitch();
+    deviceJson["joyX"]         = device->getJoystickX();
+    deviceJson["joyY"]         = device->getJoystickY();
+    deviceJson["joySwitch"]    = device->getJoystickSwitch();
+    deviceJson["joySuspended"] = device->isJoystickSuspended();
   }
   #endif
+
+  // Servo configuration
+  JsonArray servoRangeMin = deviceJson["servoRangeMin"].to<JsonArray>();
+  JsonArray servoRangeMax = deviceJson["servoRangeMax"].to<JsonArray>();
+  for (uint8_t i = 0; i < 6; i++) {
+    servoRangeMin.add(configuration.eyeServoRangeMin[i]);
+    servoRangeMax.add(configuration.eyeServoRangeMax[i]);
+  }
+  deviceJson["servoInvertedMask"] = configuration.servoInvertedMask;
+  JsonArray corrMatrixR = deviceJson["eyeCorrMatrixR"].to<JsonArray>();
+  for (uint8_t i = 0; i < 9; i++) {
+    JsonArray cell = corrMatrixR.add<JsonArray>();
+    cell.add(configuration.eyeCorrMatrixR[i][0]);
+    cell.add(configuration.eyeCorrMatrixR[i][1]);
+  }
+  JsonArray corrMatrixL = deviceJson["eyeCorrMatrixL"].to<JsonArray>();
+  for (uint8_t i = 0; i < 9; i++) {
+    JsonArray cell = corrMatrixL.add<JsonArray>();
+    cell.add(configuration.eyeCorrMatrixL[i][0]);
+    cell.add(configuration.eyeCorrMatrixL[i][1]);
+  }
 
   String jsonStr;
   serializeJson(deviceJson, jsonStr);
@@ -1206,6 +1278,60 @@ bool CWifiManager::updateConfigFromJson(JsonDocument jsonObj) {
     Log.traceln("Setting 'joystickEyeControl' to %d", configuration.joystickEyeControl);
   }
   #endif
+
+  // Servo configuration
+  if (!jsonObj["servoRangeMin"].isNull() && jsonObj["servoRangeMin"].is<JsonArray>()) {
+    JsonArray arr = jsonObj["servoRangeMin"].as<JsonArray>();
+    for (uint8_t i = 0; i < 6 && i < arr.size(); i++) {
+      uint16_t val = arr[i].as<uint16_t>();
+      if (val >= SERVO_PULSE_MIN && val <= SERVO_PULSE_MAX)
+        configuration.eyeServoRangeMin[i] = val;
+    }
+    Log.traceln("Setting 'servoRangeMin'");
+  }
+
+  if (!jsonObj["servoRangeMax"].isNull() && jsonObj["servoRangeMax"].is<JsonArray>()) {
+    JsonArray arr = jsonObj["servoRangeMax"].as<JsonArray>();
+    for (uint8_t i = 0; i < 6 && i < arr.size(); i++) {
+      uint16_t val = arr[i].as<uint16_t>();
+      if (val >= SERVO_PULSE_MIN && val <= SERVO_PULSE_MAX)
+        configuration.eyeServoRangeMax[i] = val;
+    }
+    Log.traceln("Setting 'servoRangeMax'");
+  }
+
+  if (!jsonObj["servoInvertedMask"].isNull()) {
+    configuration.servoInvertedMask = jsonObj["servoInvertedMask"].as<uint8_t>();
+    Log.traceln("Setting 'servoInvertedMask' to %d", configuration.servoInvertedMask);
+  }
+
+  if (!jsonObj["eyeCorrMatrixR"].isNull() && jsonObj["eyeCorrMatrixR"].is<JsonArray>()) {
+    JsonArray arr = jsonObj["eyeCorrMatrixR"].as<JsonArray>();
+    for (uint8_t i = 0; i < 9 && i < arr.size(); i++) {
+      if (arr[i].is<JsonArray>()) {
+        JsonArray cell = arr[i].as<JsonArray>();
+        if (cell.size() >= 2) {
+          configuration.eyeCorrMatrixR[i][0] = (uint16_t)constrain(cell[0].as<int>(), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+          configuration.eyeCorrMatrixR[i][1] = (uint16_t)constrain(cell[1].as<int>(), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+        }
+      }
+    }
+    Log.traceln("Setting 'eyeCorrMatrixR'");
+  }
+
+  if (!jsonObj["eyeCorrMatrixL"].isNull() && jsonObj["eyeCorrMatrixL"].is<JsonArray>()) {
+    JsonArray arr = jsonObj["eyeCorrMatrixL"].as<JsonArray>();
+    for (uint8_t i = 0; i < 9 && i < arr.size(); i++) {
+      if (arr[i].is<JsonArray>()) {
+        JsonArray cell = arr[i].as<JsonArray>();
+        if (cell.size() >= 2) {
+          configuration.eyeCorrMatrixL[i][0] = (uint16_t)constrain(cell[0].as<int>(), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+          configuration.eyeCorrMatrixL[i][1] = (uint16_t)constrain(cell[1].as<int>(), SERVO_PULSE_MIN, SERVO_PULSE_MAX);
+        }
+      }
+    }
+    Log.traceln("Setting 'eyeCorrMatrixL'");
+  }
 
   return true;
 }

@@ -59,6 +59,11 @@ private:
     // Map a value in [0.0, 100.0] to the configured PWM pulse range for the given servo channel.
     uint16_t mapServo(float value, uint8_t channel) const;
 
+    // Bilinearly interpolate the 3x3 correction matrix to get LR and UD pulse values
+    // for gaze position (x, y) in [0, 100] space.
+    void correctedGaze(float x, float y, uint16_t& lrPulse, uint16_t& udPulse) const;     // uses eyeCorrMatrixR
+    void correctedGazeLeft(float x, float y, uint16_t& lrPulse, uint16_t& udPulse) const; // uses eyeCorrMatrixL
+
     CServoManager* _servo;
 
     // Retained eyelid openness (0-100) so blink can restore the previous position.

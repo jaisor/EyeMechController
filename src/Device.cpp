@@ -104,9 +104,13 @@ CDevice::CDevice()
   #ifdef JOYSTICK
   joyX         = 0;
   joyY         = 0;
-  joySwitch    = false;
-  joyPrevSwitch = false;
-  joyLastRead  = 0;
+  joySwitch        = false;
+  joyPrevSwitch    = false;
+  joyLastRead      = 0;
+  joyRefX          = 0;
+  joyRefY          = 0;
+  joyIdleSince     = millis();
+  joyIdleSuspended = false;
   pinMode(JOY_SW_PIN, INPUT_PULLUP);
   Log.infoln(F("Joystick initialized – X:GPIO%d  Y:GPIO%d  SW:GPIO%d"), JOY_X_PIN, JOY_Y_PIN, JOY_SW_PIN);
   #endif
@@ -176,17 +180,33 @@ void CDevice::loop() {
       joySwitch = !digitalRead(JOY_SW_PIN); // INPUT_PULLUP → pressed = LOW → true
       joyLastRead = now;
 
-      // Map raw ADC [0, JOY_ADC_MAX] to eye position [0.0, 100.0]
-      float eyeX = joyX * 100.0f / JOY_ADC_MAX;
-      float eyeY = joyY * 100.0f / JOY_ADC_MAX;
+      // Idle-suspend: track whether either axis has moved > 5% since the last
+      // reference sample. Movement resets the reference and the idle timer;
+      // one minute without movement suspends joystick control.
+      {
+        int16_t dx = (int16_t)joyX - (int16_t)joyRefX;
+        int16_t dy = (int16_t)joyY - (int16_t)joyRefY;
+        if (abs(dx) > JOY_IDLE_THRESHOLD || abs(dy) > JOY_IDLE_THRESHOLD) {
+          joyRefX          = joyX;
+          joyRefY          = joyY;
+          joyIdleSince     = now;
+          joyIdleSuspended = false;
+        } else if (!joyIdleSuspended && (now - joyIdleSince >= JOY_IDLE_TIMEOUT_MS)) {
+          joyIdleSuspended = true;
+          Log.infoln(F("Joystick idle for %lums – suspending eye control"), JOY_IDLE_TIMEOUT_MS);
+        }
+      }
 
-      if (configuration.joystickEyeControl) {
+      // Drive gaze only when enabled and not idle-suspended
+      if (configuration.joystickEyeControl && !joyIdleSuspended) {
+        float eyeX = joyX * 100.0f / JOY_ADC_MAX;
+        float eyeY = joyY * 100.0f / JOY_ADC_MAX;
         eyeMechManager.lookAt(eyeX, eyeY);
       }
 
-      // Button: close eyelids while held, reopen on release (track edge regardless of enable state)
+      // Button: close eyelids while held, reopen on release
       if (joySwitch != joyPrevSwitch) {
-        if (configuration.joystickEyeControl) {
+        if (configuration.joystickEyeControl && !joyIdleSuspended) {
           eyeMechManager.setEyelids(joySwitch ? 0 : 100);
         }
         joyPrevSwitch = joySwitch;

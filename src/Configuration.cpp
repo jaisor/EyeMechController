@@ -106,9 +106,17 @@ void EEPROM_loadConfig() {
     for (int i = 0; i < 6; i++) {
       configuration.eyeServoRangeMin[i] = SERVO_PULSE_MIN; // (~0°)
       configuration.eyeServoRangeMax[i] = SERVO_PULSE_MAX; // (~180°)
-      configuration.eyeServoTrim[i]     = (SERVO_PULSE_MIN + SERVO_PULSE_MAX) / 2;
     }
     configuration.servoInvertedMask = 0;
+    for (int row = 0; row < 3; row++) {
+      for (int col = 0; col < 3; col++) {
+        int idx = row * 3 + col;
+        configuration.eyeCorrMatrixR[idx][0] = SERVO_PULSE_MIN + (uint16_t)((SERVO_PULSE_MAX - SERVO_PULSE_MIN) * col / 2);
+        configuration.eyeCorrMatrixR[idx][1] = SERVO_PULSE_MAX - (uint16_t)((SERVO_PULSE_MAX - SERVO_PULSE_MIN) * row / 2);
+        configuration.eyeCorrMatrixL[idx][0] = SERVO_PULSE_MIN + (uint16_t)((SERVO_PULSE_MAX - SERVO_PULSE_MIN) * col / 2);
+        configuration.eyeCorrMatrixL[idx][1] = SERVO_PULSE_MAX - (uint16_t)((SERVO_PULSE_MAX - SERVO_PULSE_MIN) * row / 2);
+      }
+    }
     #ifdef JOYSTICK
     configuration.joystickEyeControl = 1;  // Default: enabled
     #endif
@@ -156,6 +164,28 @@ void EEPROM_loadConfig() {
     configuration.cycleModesCount = 0;
   }
 #endif
+
+  // Migration: initialize per-eye correction matrices if they appear uninitialized (all zeros)
+  if (configuration.eyeCorrMatrixR[0][0] == 0) {
+    Log.verboseln("eyeCorrMatrixR uninitialized, setting defaults");
+    for (int row = 0; row < 3; row++) {
+      for (int col = 0; col < 3; col++) {
+        int idx = row * 3 + col;
+        configuration.eyeCorrMatrixR[idx][0] = configuration.eyeServoRangeMin[0] + (uint16_t)((configuration.eyeServoRangeMax[0] - configuration.eyeServoRangeMin[0]) * col / 2);
+        configuration.eyeCorrMatrixR[idx][1] = configuration.eyeServoRangeMax[1] - (uint16_t)((configuration.eyeServoRangeMax[1] - configuration.eyeServoRangeMin[1]) * row / 2);
+      }
+    }
+  }
+  if (configuration.eyeCorrMatrixL[0][0] == 0) {
+    Log.verboseln("eyeCorrMatrixL uninitialized, setting defaults");
+    for (int row = 0; row < 3; row++) {
+      for (int col = 0; col < 3; col++) {
+        int idx = row * 3 + col;
+        configuration.eyeCorrMatrixL[idx][0] = configuration.eyeServoRangeMin[3] + (uint16_t)((configuration.eyeServoRangeMax[3] - configuration.eyeServoRangeMin[3]) * col / 2);
+        configuration.eyeCorrMatrixL[idx][1] = configuration.eyeServoRangeMax[4] - (uint16_t)((configuration.eyeServoRangeMax[4] - configuration.eyeServoRangeMin[4]) * row / 2);
+      }
+    }
+  }
 
 #ifdef WIFI
   String wifiStr = String(configuration.wifiSsid);

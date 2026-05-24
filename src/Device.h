@@ -38,9 +38,11 @@ public:
   #ifdef JOYSTICK
   // Raw ADC readings: 0-4095 on ESP32 variants, 0-1023 on ESP8266.
   // Switch is active LOW (INPUT_PULLUP); pressed = true.
-  uint16_t getJoystickX()      const { return joyX; }
-  uint16_t getJoystickY()      const { return joyY; }
-  bool     getJoystickSwitch() const { return joySwitch; }
+  uint16_t getJoystickX()         const { return joyX; }
+  uint16_t getJoystickY()         const { return joyY; }
+  bool     getJoystickSwitch()    const { return joySwitch; }
+  // True when joystick has been idle (< 5% movement) for >= 1 minute
+  bool     isJoystickSuspended()  const { return joyIdleSuspended; }
   #endif
 
   // Set WiFi info for OLED display (call before setState)
@@ -68,6 +70,11 @@ private:
   bool          joySwitch;
   bool          joyPrevSwitch;
   unsigned long joyLastRead;
+  // Idle-suspend tracking
+  uint16_t      joyRefX;           // axis position at last significant movement
+  uint16_t      joyRefY;
+  unsigned long joyIdleSince;      // millis() when movement was last detected
+  bool          joyIdleSuspended;  // true = joystick has been idle >= 1 min
   #endif
 
   #ifdef OLED

@@ -244,53 +244,110 @@ const char htmlServo[] PROGMEM = R"=====(
             <span><small><b>Servo</b></small></span>
             <span><small><b>Min pulse</b></small></span>
             <span><small><b>Max pulse</b></small></span>
-            <span><small><b>Trim (mid)</b></small></span>
             <span><small><b>Invert</b></small></span>
           </div>
           <div class='grid'>
             <span>Servo 0</span>
-            <input type='number' name='eyeServoMin_0' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoMax_0' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoTrim_0' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMin_0' min='150' max='400' value='%u'>
+            <input type='number' name='eyeServoMax_0' min='150' max='400' value='%u'>
             <label><input type='checkbox' name='servoInvert_0' %s></label>
           </div>
           <div class='grid'>
             <span>Servo 1</span>
-            <input type='number' name='eyeServoMin_1' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoMax_1' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoTrim_1' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMin_1' min='150' max='400' value='%u'>
+            <input type='number' name='eyeServoMax_1' min='150' max='400' value='%u'>
             <label><input type='checkbox' name='servoInvert_1' %s></label>
           </div>
           <div class='grid'>
             <span>Servo 2</span>
-            <input type='number' name='eyeServoMin_2' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoMax_2' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoTrim_2' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMin_2' min='150' max='400' value='%u'>
+            <input type='number' name='eyeServoMax_2' min='150' max='400' value='%u'>
             <label><input type='checkbox' name='servoInvert_2' %s></label>
           </div>
           <div class='grid'>
             <span>Servo 3</span>
-            <input type='number' name='eyeServoMin_3' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoMax_3' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoTrim_3' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMin_3' min='150' max='400' value='%u'>
+            <input type='number' name='eyeServoMax_3' min='150' max='400' value='%u'>
             <label><input type='checkbox' name='servoInvert_3' %s></label>
           </div>
           <div class='grid'>
             <span>Servo 4</span>
-            <input type='number' name='eyeServoMin_4' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoMax_4' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoTrim_4' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMin_4' min='150' max='400' value='%u'>
+            <input type='number' name='eyeServoMax_4' min='150' max='400' value='%u'>
             <label><input type='checkbox' name='servoInvert_4' %s></label>
           </div>
           <div class='grid'>
             <span>Servo 5</span>
-            <input type='number' name='eyeServoMin_5' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoMax_5' min='150' max='600' value='%u'>
-            <input type='number' name='eyeServoTrim_5' min='150' max='600' value='%u'>
+            <input type='number' name='eyeServoMin_5' min='150' max='400' value='%u'>
+            <input type='number' name='eyeServoMax_5' min='150' max='400' value='%u'>
             <label><input type='checkbox' name='servoInvert_5' %s></label>
           </div>
         </fieldset>
         <button type='submit' value='Submit'>Save Config...</button>
+      </form>
+)=====";
+
+const char htmlCorrMatrix[] PROGMEM = R"=====(
+      <h3>Gaze Correction Matrix</h3>
+      <p><small>Fine-tune the servo pulses at each of the 9 gaze positions. <b>LR</b> = left/right pulse, <b>UD</b> = up/down pulse (PWM ticks 150–400). Row 0 = top, Col 0 = left. Bilinear interpolation is used between cells.</small></p>
+      <form method='POST' action='servo' enctype='application/x-www-form-urlencoded'>
+        <h4 style='margin-bottom:.5rem'>Right Eye (ch0 LR / ch1 UD)</h4>
+        <div class='overflow-auto'>
+          <table>
+            <thead>
+              <tr><th></th><th style='text-align:center'>Left</th><th style='text-align:center'>Center</th><th style='text-align:center'>Right</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>Top</th>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmR_0_0_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmR_0_0_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmR_0_1_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmR_0_1_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmR_0_2_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmR_0_2_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+              </tr>
+              <tr>
+                <th>Middle</th>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmR_1_0_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmR_1_0_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmR_1_1_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmR_1_1_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmR_1_2_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmR_1_2_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+              </tr>
+              <tr>
+                <th>Bottom</th>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmR_2_0_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmR_2_0_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmR_2_1_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmR_2_1_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmR_2_2_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmR_2_2_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h4 style='margin:.75rem 0 .5rem'>Left Eye (ch3 LR / ch4 UD)</h4>
+        <div class='overflow-auto'>
+          <table>
+            <thead>
+              <tr><th></th><th style='text-align:center'>Left</th><th style='text-align:center'>Center</th><th style='text-align:center'>Right</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>Top</th>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmL_0_0_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmL_0_0_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmL_0_1_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmL_0_1_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmL_0_2_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmL_0_2_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+              </tr>
+              <tr>
+                <th>Middle</th>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmL_1_0_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmL_1_0_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmL_1_1_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmL_1_1_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmL_1_2_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmL_1_2_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+              </tr>
+              <tr>
+                <th>Bottom</th>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmL_2_0_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmL_2_0_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmL_2_1_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmL_2_1_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+                <td style='padding:.4rem'>LR&nbsp;<input type='number' name='cmL_2_2_0' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 .5rem .25rem 0'>UD&nbsp;<input type='number' name='cmL_2_2_1' min='150' max='400' value='%u' style='width:5rem;display:inline;margin:0 0 .25rem 0'></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button type='submit'>Save Correction Matrices</button>
       </form>
 )=====";
 

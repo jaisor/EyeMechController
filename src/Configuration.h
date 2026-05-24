@@ -137,13 +137,17 @@
     #define JOY_Y_PIN   35
     #define JOY_SW_PIN  32
   #endif
-  #define JOY_READ_INTERVAL_MS  20   // Poll joystick every 20 ms (~50 Hz)
+  #define JOY_READ_INTERVAL_MS  20        // Poll joystick every 20 ms (~50 Hz)
   // Max raw ADC value: ESP8266 = 10-bit (1023), ESP32 variants = 12-bit (4095)
   #ifdef ESP8266
     #define JOY_ADC_MAX  1023
   #else
     #define JOY_ADC_MAX  4095
   #endif
+  // Idle-suspend: if neither axis moves more than 5% of full scale within
+  // JOY_IDLE_TIMEOUT_MS, joystick control is suspended until it moves again.
+  #define JOY_IDLE_THRESHOLD   (JOY_ADC_MAX / 20)  // 5% of full scale
+  #define JOY_IDLE_TIMEOUT_MS  60000UL              // 1 minute
 #endif
 
 #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
@@ -157,7 +161,7 @@
 // Standard servo pulse width bounds (12-bit ticks at 50 Hz)
 // 50 Hz → 20 ms period → 4096 ticks; 1 tick ≈ 4.88 µs
 #define SERVO_PULSE_MIN  150   // ~0°   (~730 µs)
-#define SERVO_PULSE_MAX  600   // ~180° (~2930 µs)
+#define SERVO_PULSE_MAX  300   // ~180° (~1465 µs)
 
 struct configuration_t {
 
@@ -191,17 +195,19 @@ struct configuration_t {
 
     uint8_t ledEnabled;
 
-    // Eye mechanism servo ranges in raw PWM ticks (150 = ~0°, 600 = ~180°), one min/max pair per servo channel.
+    // Eye mechanism servo ranges in raw PWM ticks (150 = ~0°, 300 = ~90°), one min/max pair per servo channel.
     // Indexed by EYE_RIGHT_LR(0), EYE_RIGHT_UD(1), EYE_RIGHT_LID(2),
     //            EYE_LEFT_LR(3),  EYE_LEFT_UD(4),  EYE_LEFT_LID(5)
     uint16_t eyeServoRangeMin[6];
     uint16_t eyeServoRangeMax[6];
-    // Midpoint trim per channel: actual PWM pulse sent when the servo is commanded to centre.
-    // Defaults to (min+max)/2. Must stay within [eyeServoRangeMin, eyeServoRangeMax].
-    uint16_t eyeServoTrim[6];
-
     // Servo inversion bitmask: bit N set means channel N PWM is inverted (PULSE_MIN + PULSE_MAX - pulse)
     uint8_t servoInvertedMask;
+
+    // Per-eye 3x3 gaze correction matrices, row-major (row 0 = top, row 2 = bottom; col 0 = left, col 2 = right).
+    // eyeCorrMatrixR[i] = { lr_pulse, ud_pulse } directly driving ch0 (LR) and ch1 (UD).
+    // eyeCorrMatrixL[i] = { lr_pulse, ud_pulse } directly driving ch3 (LR) and ch4 (UD).
+    uint16_t eyeCorrMatrixR[9][2];
+    uint16_t eyeCorrMatrixL[9][2];
 
     #ifdef JOYSTICK
     // 1 = joystick X/Y drives eye gaze and button closes eyelids; 0 = joystick read-only
